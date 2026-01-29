@@ -165,11 +165,7 @@ struct CodeBlockView: View {
 // MARK: - Spinner
 
 struct SpinnerView: View {
-    @State private var rotation: Double = 0
-    @State private var impulseTarget: Double = 360
-
-    private let impulse: Double = 360
-    private let spring: Animation = .spring(duration: 0.9, bounce: 0.15)
+    @State private var isAnimating = false
 
     var body: some View {
         Circle()
@@ -184,18 +180,8 @@ struct SpinnerView: View {
                 style: StrokeStyle(lineWidth: 2, lineCap: .round)
             )
             .frame(width: 14, height: 14)
-            .rotationEffect(.degrees(rotation))
-            .onAppear { kick() }
-    }
-
-    private func kick() {
-        withAnimation(spring) {
-            rotation = impulseTarget
-        } completion: {
-            // Normalize to prevent unbounded growth
-            rotation = rotation.truncatingRemainder(dividingBy: 360)
-            impulseTarget = rotation + impulse
-            kick()
-        }
+            .rotationEffect(.degrees(isAnimating ? 360 : 0))
+            .animation(.linear(duration: 0.9).repeatForever(autoreverses: false), value: isAnimating)
+            .onAppear { isAnimating = true }
     }
 }

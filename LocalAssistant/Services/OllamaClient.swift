@@ -25,7 +25,7 @@ struct OllamaClient {
     }
 
     /// Streaming generate – calls `onToken` for each chunk on MainActor.
-    func streamGenerate(prompt: String, onToken: @escaping (String) -> Void) async throws {
+    func streamGenerate(prompt: String, onToken: @escaping @MainActor (String) -> Void) async throws {
         let url = URL(string: "\(baseURL)/api/generate")!
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
@@ -39,14 +39,22 @@ struct OllamaClient {
         ]
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
 
-        let (bytes, _) = try await URLSession.shared.bytes(for: request)
+        // Use a dedicated session so we can invalidate it to force-close the connection.
+        let session = URLSession(configuration: .default)
+        defer { session.invalidateAndCancel() }
 
-        struct Chunk: Decodable { let response: String }
+        let (bytes, _) = try await session.bytes(for: request)
+
+        struct Chunk: Decodable {
+            let response: String
+            let done: Bool?
+        }
 
         for try await line in bytes.lines {
             guard let data = line.data(using: .utf8),
                   let chunk = try? JSONDecoder().decode(Chunk.self, from: data) else { continue }
-            onToken(chunk.response)
+            await onToken(chunk.response)
+            if chunk.done == true { return }
         }
     }
 

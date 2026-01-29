@@ -45,14 +45,12 @@ struct ComposerView: View {
 #Preview("ComposerView") {
     let client = OllamaClient()
     let chatPersistence = ChatPersistence()
-    let memoryPersistence = MemoryPersistence()
     let summarizationService = SummarizationService(ollamaClient: client)
     let summaryVM = SummaryViewModel(service: summarizationService)
 
     let chatVM = ChatViewModel(
         ollamaClient: client,
         chatPersistence: chatPersistence,
-        memoryPersistence: memoryPersistence,
         summarizationService: summarizationService,
         summaryViewModel: summaryVM
     )

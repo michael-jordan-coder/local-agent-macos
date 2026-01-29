@@ -3,7 +3,6 @@ import SwiftUI
 struct ContentView: View {
     var statusVM: AppStatusViewModel
     @Bindable var chatVM: ChatViewModel
-    var memoryVM: MemoryViewModel
     var summaryVM: SummaryViewModel
     @State private var showInspector = false
 
