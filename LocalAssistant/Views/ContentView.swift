@@ -5,6 +5,7 @@ struct ContentView: View {
     @Bindable var chatVM: ChatViewModel
     var summaryVM: SummaryViewModel
     @State private var showInspector = false
+    @State private var searchText = ""
 
     var body: some View {
         NavigationSplitView {
@@ -31,9 +32,16 @@ struct ContentView: View {
 
     // MARK: - Sidebar
 
+    private var filteredConversations: [Conversation] {
+        guard !searchText.isEmpty else { return chatVM.conversations }
+        return chatVM.conversations.filter {
+            $0.title.localizedCaseInsensitiveContains(searchText)
+        }
+    }
+
     private var sidebar: some View {
         List(selection: $chatVM.selectedConversationID) {
-            ForEach(chatVM.conversations) { conv in
+            ForEach(filteredConversations) { conv in
                 Text(conv.title)
                     .lineLimit(1)
                     .tag(conv.id)
@@ -44,6 +52,11 @@ struct ContentView: View {
                     }
             }
         }
+        .searchable(
+            text: $searchText,
+            placement: .sidebar,
+            prompt: "Search conversations"
+        )
         .navigationSplitViewColumnWidth(min: 180, ideal: 220)
         .toolbar {
             ToolbarItem {

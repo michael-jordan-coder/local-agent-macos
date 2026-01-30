@@ -13,7 +13,7 @@ struct ComposerView: View {
 
             HStack(spacing: 12) {
              Image(systemName: "plus")
-                    .font(Font.system(size: 24, weight: .medium))
+                    .font(Font.system(size: 22, weight: .medium))
                     
                 TextField("Ask anything…", text: $chatVM.input)
                     .font(.body)
