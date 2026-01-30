@@ -1,3 +1,4 @@
+import MarkdownUI
 import SwiftUI
 
 struct MessageRowView: View {
@@ -43,9 +44,16 @@ struct MessageRowView: View {
                 ForEach(Self.parseContent(message.content)) { segment in
                     switch segment.kind {
                     case .text(let text):
-                        Text(text)
-                            .font(.title)
-                            .textSelection(.enabled)
+                        // MarkdownUI handles full block-level rendering (headings,
+                        // lists, thematic breaks, paragraphs) plus inline formatting.
+                        // Streaming-safe: partial/malformed Markdown is rendered
+                        // best-effort by the library; it never crashes on incomplete input.
+                        Markdown(text)
+                            .markdownTheme(.assistantMessage)
+                            .environment(\.openURL, OpenURLAction { url in
+                                NSWorkspace.shared.open(url)
+                                return .handled
+                            })
                     case .codeBlock(let language, let code):
                         CodeBlockView(language: language, code: code)
                     }
@@ -60,7 +68,7 @@ struct MessageRowView: View {
 
     private var systemRow: some View {
         Text(message.content)
-            .font(.title)
+            .font(.body)
             .foregroundStyle(.secondary)
             .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -121,6 +129,107 @@ struct MessageRowView: View {
     }
 }
 
+// MARK: - Assistant Markdown Theme - the styling for the ai answear
+
+/// Custom MarkdownUI theme for assistant messages.
+/// Semantic text styles with clear heading hierarchy,
+/// visible thematic breaks (---), and subtle inline code styling.
+extension MarkdownUI.Theme {
+    /// Semantic text styles for assistant messages.
+    /// .text and .code are TextStyle builders (inline); heading/paragraph/etc are BlockStyle builders.
+    static let assistantMessage = Theme()
+        // Inline text: slightly larger than default .body (13pt)
+        .text {
+            FontSize(16)
+        }
+        // Headings: scaled up proportionally
+        .heading1 { configuration in
+            configuration.label
+                .markdownTextStyle {
+                    FontSize(30)
+                    FontWeight(.semibold)
+                }
+                .padding(.top, 8)
+                .padding(.bottom, 3)
+        }
+        .heading2 { configuration in
+            configuration.label
+                .markdownTextStyle {
+                    FontSize(26)
+                    FontWeight(.semibold)
+                }
+                .padding(.top, 6)
+                .padding(.bottom, 2)
+        }
+        .heading3 { configuration in
+            configuration.label
+                .markdownTextStyle {
+                    FontSize(22)
+                    FontWeight(.semibold)
+                }
+                .padding(.top, 4)
+                .padding(.bottom, 2)
+        }
+        .heading4 { configuration in
+            configuration.label
+                .markdownTextStyle {
+                    FontSize(19)
+                    FontWeight(.semibold)
+                }
+                .padding(.top, 3)
+        }
+        .heading5 { configuration in
+            configuration.label
+                .markdownTextStyle {
+                    FontSize(17)
+                    FontWeight(.semibold)
+                }
+                .padding(.top, 2)
+        }
+        .heading6 { configuration in
+            configuration.label
+                .markdownTextStyle {
+                    FontSize(15)
+                    FontWeight(.semibold)
+                    ForegroundColor(.secondary)
+                }
+        }
+        // Horizontal rule (---) → visible Divider separator
+        .thematicBreak {
+            Divider()
+                .padding(.vertical, 8)
+        }
+        // Links: accent-colored + underlined, opened via NSWorkspace
+        .link {
+            ForegroundColor(.accentColor)
+            UnderlineStyle(.single)
+        }
+        // Inline code: monospace, slightly smaller, subtle background
+        .code {
+            FontFamilyVariant(.monospaced)
+            FontSize(.em(0.9))
+            BackgroundColor(Color(nsColor: .quaternaryLabelColor))
+        }
+        // Fallback code blocks (only if parseContent misses a fence)
+        .codeBlock { configuration in
+            ScrollView(.horizontal, showsIndicators: true) {
+                configuration.label
+                    .markdownTextStyle {
+                        FontFamilyVariant(.monospaced)
+                        FontSize(.em(0.85))
+                    }
+                    .padding(10)
+            }
+            .background(Color(nsColor: .quaternaryLabelColor).opacity(0.5),
+                         in: RoundedRectangle(cornerRadius: 8))
+        }
+        // Paragraphs: let text wrap naturally
+        .paragraph { configuration in
+            configuration.label
+                .fixedSize(horizontal: false, vertical: true)
+        }
+}
+
 // MARK: - Code Block
 
 struct CodeBlockView: View {
@@ -154,11 +263,11 @@ struct CodeBlockView: View {
                 Text(code)
                     .font(.system(.body, design: .monospaced))
                     .textSelection(.enabled)
-                    .padding(10)
+                    .padding(16)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
-        .background(.quaternary, in: RoundedRectangle(cornerRadius: 8))
+        .background(Color.black.opacity(0.2), in: RoundedRectangle(cornerRadius: 8))
     }
 }
 

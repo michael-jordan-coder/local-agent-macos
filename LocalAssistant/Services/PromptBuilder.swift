@@ -17,7 +17,8 @@ enum PromptBuilder {
         systemSection += """
 
         You are a helpful personal assistant. Reply in English. \
-        Be concise, direct, and practical.
+        Be concise, direct, and practical. \
+        Always format your responses using Markdown (headings, bold, italic, lists, code blocks, etc.).
         """
         parts.append(systemSection)
 

@@ -78,6 +78,7 @@
 			);
 			name = LocalAssistant;
 			packageProductDependencies = (
+				65B192512F2AC00100D4C0D7 /* MarkdownUI */,
 			);
 			productName = LocalAssistant;
 			productReference = 65B192392F2AB91E00D4C0D7 /* LocalAssistant.app */;
@@ -107,6 +108,9 @@
 			);
 			mainGroup = 65B192302F2AB91E00D4C0D7;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				65B192502F2AC00000D4C0D7 /* XCRemoteSwiftPackageReference "swift-markdown-ui" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 65B1923A2F2AB91E00D4C0D7 /* Products */;
 			projectDirPath = "";
@@ -346,6 +350,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		65B192502F2AC00000D4C0D7 /* XCRemoteSwiftPackageReference "swift-markdown-ui" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/gonzalezreal/swift-markdown-ui.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.4.1;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		65B192512F2AC00100D4C0D7 /* MarkdownUI */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 65B192502F2AC00000D4C0D7 /* XCRemoteSwiftPackageReference "swift-markdown-ui" */;
+			productName = MarkdownUI;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 65B192312F2AB91E00D4C0D7 /* Project object */;
 }

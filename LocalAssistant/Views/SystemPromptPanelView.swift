@@ -15,7 +15,7 @@ struct SystemPromptPanelView: View {
         VStack(alignment: .leading, spacing: 16) {
             HStack(spacing: 4) {
                 Text("Session System Prompt")
-                    .font(.title2)
+                    .font(.title.bold())
                 Image(systemName: "questionmark.circle")
                     .foregroundStyle(.secondary)
                     .popover(isPresented: $showTooltip, arrowEdge: .bottom) {
