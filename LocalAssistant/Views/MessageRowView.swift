@@ -19,6 +19,7 @@ struct MessageRowView: View {
         HStack {
             Spacer(minLength: 80)
             Text(message.content)
+                .font(.title3)
                 .textSelection(.enabled)
                 .padding(10)
                 .background(.quaternary, in: RoundedRectangle(cornerRadius: 12))
@@ -33,12 +34,11 @@ struct MessageRowView: View {
                 if isStreaming {
                     SpinnerView()
                 } else {
-                    Image(systemName: "sparkles")
-                        .foregroundStyle(.secondary)
+                    Color.clear
                 }
             }
             .frame(width: 20)
-            .padding(.top, 3)
+           
 
             VStack(alignment: .leading, spacing: 8) {
                 ForEach(Self.parseContent(message.content)) { segment in

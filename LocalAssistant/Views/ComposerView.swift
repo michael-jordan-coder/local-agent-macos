@@ -35,7 +35,9 @@ struct ComposerView: View {
                 }
             }
         }
-        .padding(16)
+        .padding(.vertical, 16)
+        .padding(.horizontal, 64)
+        
     }
 
     private var canSend: Bool {

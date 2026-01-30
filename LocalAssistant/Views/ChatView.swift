@@ -15,7 +15,7 @@ struct ChatView: View {
                         )
                     }
                 }
-                .padding(16)
+                .padding(64)
             }
             .onChange(of: messages.count) {
                 if let last = messages.last {
