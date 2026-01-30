@@ -5,7 +5,7 @@ struct SystemPromptPanelView: View {
     @State private var draftPrompt: String = ""
     @State private var showTooltip: Bool = false
     @State private var applyState: ApplyState = .clean
-    let placeholderText: String = "Enter your system prompt here"
+    let placeholderText: String = "This conversation is about **conceptual thinking**. Be direct. Use real-world examples. Avoid code unless requested."
 
     enum ApplyState {
         case clean, dirty, confirmed
@@ -30,13 +30,27 @@ struct SystemPromptPanelView: View {
             }
           
 
-            TextEditor(text: $draftPrompt)
-                .padding(8)
-                .font(.system(.body, design: .monospaced))
-                .frame(minHeight: 200)
-                .scrollContentBackground(.hidden)
-                
-                .background(RoundedRectangle(cornerRadius: 16).strokeBorder(Color(nsColor: .separatorColor)))
+            ZStack(alignment: .topLeading) {
+                if draftPrompt.isEmpty {
+                    Text(placeholderText)
+                        .foregroundStyle(.secondary)
+                        .font(.system(.body, design: .monospaced))
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 14)
+                        .allowsHitTesting(false)
+                }
+
+                TextEditor(text: $draftPrompt)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 14)
+                    .font(.system(.body, design: .monospaced))
+                    .frame(minHeight: 200)
+                    .scrollContentBackground(.hidden)
+            }
+            .background(
+                RoundedRectangle(cornerRadius: 16)
+                    .strokeBorder(Color(nsColor: .separatorColor))
+            )
 
             HStack(spacing: 8) {
                 Spacer()
