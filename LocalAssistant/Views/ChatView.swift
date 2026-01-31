@@ -5,28 +5,44 @@ struct ChatView: View {
     var isLoading: Bool = false
 
     var body: some View {
-        ScrollViewReader { proxy in
-            ScrollView {
-                LazyVStack(spacing: 16) {
-                    ForEach(messages) { message in
-                        MessageRowView(
-                            message: message,
-                            isStreaming: isLoading && message.id == messages.last?.id && message.role == "assistant"
-                        )
+        GeometryReader { geometry in
+            if messages.isEmpty {
+                EmptyStateView()
+            } else {
+                ScrollViewReader { proxy in
+                    ScrollView {
+                        LazyVStack(spacing: 16) {
+                            ForEach(messages) { message in
+                                MessageRowView(
+                                    message: message,
+                                    isStreaming: isLoading && message.id == messages.last?.id && message.role == "assistant"
+                                )
+                            }
+                        }
+                        .padding(paddingFor(width: geometry.size.width))
+                    }
+                    .onChange(of: messages.count) {
+                        if let last = messages.last {
+                            withAnimation { proxy.scrollTo(last.id, anchor: .bottom) }
+                        }
+                    }
+                    .onAppear {
+                        if let last = messages.last {
+                            proxy.scrollTo(last.id, anchor: .bottom)
+                        }
                     }
                 }
-                .padding(64)
             }
-            .onChange(of: messages.count) {
-                if let last = messages.last {
-                    withAnimation { proxy.scrollTo(last.id, anchor: .bottom) }
-                }
-            }
-            .onAppear {
-                if let last = messages.last {
-                    proxy.scrollTo(last.id, anchor: .bottom)
-                }
-            }
+        }
+    }
+
+    private func paddingFor(width: CGFloat) -> CGFloat {
+        if width < 600 {
+            return 16
+        } else if width < 900 {
+            return 32
+        } else {
+            return 64
         }
     }
 }

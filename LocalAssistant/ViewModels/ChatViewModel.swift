@@ -10,6 +10,7 @@ final class ChatViewModel {
     private(set) var conversations: [Conversation] = []
     var selectedConversationID: UUID?
     var input = ""
+    var selectedImages: [Data] = []
     private(set) var isLoading = false
     private(set) var error: String?
 
@@ -51,6 +52,8 @@ final class ChatViewModel {
         log.info("Init: loaded \(self.conversations.count) conversations")
     }
 
+    private var currentTask: Task<Void, Never>?
+
     // MARK: - Conversation management
 
     func newConversation() {
@@ -69,90 +72,118 @@ final class ChatViewModel {
             selectedConversationID = conversations.first?.id
         }
     }
+    
+    // MARK: - Attachments
+    
+    func attachImage(_ data: Data) {
+        selectedImages.append(data)
+    }
+    
+    func removeImage(at index: Int) {
+        guard index >= 0 && index < selectedImages.count else { return }
+        selectedImages.remove(at: index)
+    }
 
     // MARK: - Send
 
-    func send() async {
+    func stop() {
+        currentTask?.cancel()
+        currentTask = nil
+    }
+
+    func send() {
         guard let idx = currentIndex else {
             log.warning("Send aborted: no conversation selected")
             return
         }
         let convID = conversations[idx].id
         let text = input.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !text.isEmpty else {
+        let imagesToSend = selectedImages
+        
+        guard !text.isEmpty || !imagesToSend.isEmpty else {
             log.warning("Send aborted: empty input")
             return
         }
 
         log.info("Send started — conv: \(convID), input: \(text.prefix(60))")
         input = ""
+        selectedImages = []
         error = nil
         isLoading = true
-        defer {
-            isLoading = false
-            log.info("Send finished — isLoading set to false")
-        }
+        
+        currentTask = Task {
+            defer {
+                isLoading = false
+                currentTask = nil
+                log.info("Send finished — isLoading set to false")
+            }
 
-        // Build prompt before appending
-        let summary = summarizationService.loadSummary()
-        let recent = Array(conversations[idx].messages.suffix(recentMessageCount))
-        let prompt = PromptBuilder.build(
-            sessionSystemPrompt: sessionSystemPrompt,
-            summary: summary,
-            recentMessages: recent,
-            newMessage: text
-        )
-        log.debug("Prompt built (\(prompt.count) chars)")
+            // Build prompt before appending
+            let summary = summarizationService.loadSummary()
+            let recent = Array(conversations[idx].messages.suffix(recentMessageCount))
+            let prompt = PromptBuilder.build(
+                sessionSystemPrompt: sessionSystemPrompt,
+                summary: summary,
+                recentMessages: recent,
+                newMessage: text
+            )
+            log.debug("Prompt built (\(prompt.count) chars)")
 
-        // Append user message
-        conversations[idx].messages.append(ChatMessage(role: "user", content: text))
-        if conversations[idx].title == "New Conversation" {
-            conversations[idx].title = String(text.prefix(50))
-        }
-        chatPersistence.save(conversations[idx])
-        log.info("User message appended, conversation saved")
+            // Append user message
+            conversations[idx].messages.append(ChatMessage(role: "user", content: text, images: imagesToSend))
+            if conversations[idx].title == "New Conversation" {
+                conversations[idx].title = String(text.prefix(50))
+            }
+            chatPersistence.save(conversations[idx])
+            log.info("User message appended, conversation saved")
 
-        // Placeholder for streaming
-        let placeholderIndex = conversations[idx].messages.count
-        conversations[idx].messages.append(ChatMessage(role: "assistant", content: ""))
-        log.info("Assistant placeholder added at index \(placeholderIndex)")
+            // Placeholder for streaming
+            let placeholderIndex = conversations[idx].messages.count
+            conversations[idx].messages.append(ChatMessage(role: "assistant", content: ""))
+            log.info("Assistant placeholder added at index \(placeholderIndex)")
 
-        do {
-            var accumulated = ""
-            var tokenCount = 0
-            log.info("Streaming started")
-            try await ollamaClient.streamGenerate(prompt: prompt) { [weak self] token in
-                guard let self else { return }
-                accumulated += token
-                tokenCount += 1
-                guard let i = self.index(for: convID),
-                      placeholderIndex < self.conversations[i].messages.count else {
-                    log.warning("Token dropped: conversation index invalid")
+            do {
+                var accumulated = ""
+                var tokenCount = 0
+                log.info("Streaming started")
+                try await ollamaClient.streamGenerate(prompt: prompt, images: imagesToSend) { [weak self] token in
+                    guard let self else { return }
+                    accumulated += token
+                    tokenCount += 1
+                    guard let i = self.index(for: convID),
+                          placeholderIndex < self.conversations[i].messages.count else {
+                        log.warning("Token dropped: conversation index invalid")
+                        return
+                    }
+                    self.conversations[i].messages[placeholderIndex] = ChatMessage(
+                        id: self.conversations[i].messages[placeholderIndex].id,
+                        role: "assistant",
+                        content: accumulated
+                    )
+                }
+                log.info("Streaming complete — \(tokenCount) tokens, \(accumulated.count) chars")
+
+                guard let i = index(for: convID) else {
+                    log.warning("Post-stream save skipped: conversation gone")
                     return
                 }
-                self.conversations[i].messages[placeholderIndex] = ChatMessage(
-                    id: self.conversations[i].messages[placeholderIndex].id,
-                    role: "assistant",
-                    content: accumulated
-                )
-            }
-            log.info("Streaming complete — \(tokenCount) tokens, \(accumulated.count) chars")
-
-            guard let i = index(for: convID) else {
-                log.warning("Post-stream save skipped: conversation gone")
-                return
-            }
-            chatPersistence.save(conversations[i])
-            log.info("Conversation saved after streaming")
-            await autoSummarizeIfNeeded(conversationID: convID)
-        } catch {
-            log.error("Streaming error: \(error.localizedDescription)")
-            self.error = error.localizedDescription
-            guard let i = index(for: convID) else { return }
-            if placeholderIndex < conversations[i].messages.count,
-               conversations[i].messages[placeholderIndex].content.isEmpty {
-                conversations[i].messages.remove(at: placeholderIndex)
-                log.info("Empty placeholder removed after error")
+                chatPersistence.save(conversations[i])
+                log.info("Conversation saved after streaming")
+                await autoSummarizeIfNeeded(conversationID: convID)
+            } catch {
+                if error is CancellationError {
+                    log.info("Streaming cancelled by user")
+                } else {
+                    log.error("Streaming error: \(error.localizedDescription)")
+                    self.error = error.localizedDescription
+                }
+                
+                guard let i = index(for: convID) else { return }
+                if placeholderIndex < conversations[i].messages.count,
+                   conversations[i].messages[placeholderIndex].content.isEmpty {
+                    conversations[i].messages.remove(at: placeholderIndex)
+                    log.info("Empty placeholder removed after error/cancel")
+                }
             }
         }
     }

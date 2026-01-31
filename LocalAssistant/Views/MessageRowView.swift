@@ -18,11 +18,27 @@ struct MessageRowView: View {
     private var userRow: some View {
         HStack {
             Spacer(minLength: 80)
-            Text(message.content)
-                .font(.title3)
-                .textSelection(.enabled)
-                .padding(10)
-                .background(.quaternary, in: RoundedRectangle(cornerRadius: 12))
+            VStack(alignment: .trailing, spacing: 8) {
+                if let images = message.images, !images.isEmpty {
+                    ForEach(Array(images.enumerated()), id: \.offset) { _, data in
+                        if let nsImage = NSImage(data: data) {
+                            Image(nsImage: nsImage)
+                                .resizable()
+                                .scaledToFit()
+                                .frame(maxWidth: 300, maxHeight: 300)
+                                .clipShape(RoundedRectangle(cornerRadius: 12))
+                        }
+                    }
+                }
+                
+                if !message.content.isEmpty {
+                    Text(message.content)
+                        .font(.title3)
+                        .textSelection(.enabled)
+                        .padding(10)
+                        .background(.quaternary, in: RoundedRectangle(cornerRadius: 12))
+                }
+            }
         }
     }
 

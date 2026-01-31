@@ -25,18 +25,23 @@ struct OllamaClient {
     }
 
     /// Streaming generate – calls `onToken` for each chunk on MainActor.
-    func streamGenerate(prompt: String, onToken: @escaping @MainActor (String) -> Void) async throws {
+    func streamGenerate(prompt: String, images: [Data]? = nil, onToken: @escaping @MainActor (String) -> Void) async throws {
         let url = URL(string: "\(baseURL)/api/generate")!
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.timeoutInterval = 120
 
-        let body: [String: Any] = [
+        var body: [String: Any] = [
             "model": "llama3",
             "prompt": prompt,
             "stream": true
         ]
+        
+        if let images = images, !images.isEmpty {
+            body["images"] = images.map { $0.base64EncodedString() }
+        }
+        
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
 
         // Use a dedicated session so we can invalidate it to force-close the connection.
