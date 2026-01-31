@@ -43,7 +43,9 @@ struct ContentView: View {
         List(selection: $chatVM.selectedConversationID) {
             ForEach(filteredConversations) { conv in
                 Text(conv.title)
+                    .font(.title3.weight(.regular))
                     .lineLimit(1)
+                    .padding(.vertical, 4)
                     .tag(conv.id)
                     .contextMenu {
                         Button("Delete", role: .destructive) {
@@ -74,7 +76,7 @@ struct ContentView: View {
             placement: .sidebar,
             prompt: "Search conversations"
         )
-        .navigationSplitViewColumnWidth(min: 180, ideal: 220)
+        .navigationSplitViewColumnWidth(min: 220, ideal: 260)
         .toolbar {
             ToolbarItem {
                 Button { chatVM.newConversation() } label: {
