@@ -1,10 +1,27 @@
 import Foundation
 
+struct OllamaModel: Codable, Identifiable, Hashable {
+    let name: String
+    var id: String { name }
+}
+
 struct OllamaClient {
     private let baseURL = "http://127.0.0.1:11434"
 
+    /// Lists locally available models.
+    func fetchModels() async throws -> [OllamaModel] {
+        guard let url = URL(string: "\(baseURL)/api/tags") else { return [] }
+        let (data, _) = try await URLSession.shared.data(from: url)
+        
+        struct ModelResponse: Decodable {
+            let models: [OllamaModel]
+        }
+        
+        return try JSONDecoder().decode(ModelResponse.self, from: data).models
+    }
+
     /// Non-streaming generate (used by summarization).
-    func generate(prompt: String) async throws -> String {
+    func generate(prompt: String, model: String = "llama3") async throws -> String {
         let url = URL(string: "\(baseURL)/api/generate")!
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
@@ -12,7 +29,7 @@ struct OllamaClient {
         request.timeoutInterval = 120
 
         let body: [String: Any] = [
-            "model": "llama3",
+            "model": model,
             "prompt": prompt,
             "stream": false
         ]
@@ -25,7 +42,7 @@ struct OllamaClient {
     }
 
     /// Streaming generate – calls `onToken` for each chunk on MainActor.
-    func streamGenerate(prompt: String, images: [Data]? = nil, onToken: @escaping @MainActor (String) -> Void) async throws {
+    func streamGenerate(prompt: String, model: String = "llama3", images: [Data]? = nil, onToken: @escaping @MainActor (String) -> Void) async throws {
         let url = URL(string: "\(baseURL)/api/generate")!
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
@@ -33,7 +50,7 @@ struct OllamaClient {
         request.timeoutInterval = 120
 
         var body: [String: Any] = [
-            "model": "llama3",
+            "model": model,
             "prompt": prompt,
             "stream": true
         ]

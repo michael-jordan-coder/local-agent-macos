@@ -6,6 +6,7 @@ struct LocalAssistantApp: App {
     @State private var statusVM: AppStatusViewModel
     @State private var chatVM: ChatViewModel
     @State private var summaryVM: SummaryViewModel
+    @AppStorage("appTheme") private var appTheme: String = "Dark"
 
     init() {
         try? SMAppService.mainApp.register()
@@ -32,8 +33,13 @@ struct LocalAssistantApp: App {
                 chatVM: chatVM,
                 summaryVM: summaryVM
             )
+            .preferredColorScheme(appTheme == "Dark" ? .dark : (appTheme == "Light" ? .light : nil))
             .task { await statusVM.ensureRunning() }
             .onAppear { centerWindow() }
+        }
+        
+        Settings {
+            SettingsView()
         }
     }
 

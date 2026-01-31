@@ -145,8 +145,10 @@ final class ChatViewModel {
             do {
                 var accumulated = ""
                 var tokenCount = 0
-                log.info("Streaming started")
-                try await ollamaClient.streamGenerate(prompt: prompt, images: imagesToSend) { [weak self] token in
+                let model = UserDefaults.standard.string(forKey: "selectedModel") ?? "llama3"
+                log.info("Streaming started with model: \(model)")
+                
+                try await ollamaClient.streamGenerate(prompt: prompt, model: model, images: imagesToSend) { [weak self] token in
                     guard let self else { return }
                     accumulated += token
                     tokenCount += 1
@@ -157,7 +159,7 @@ final class ChatViewModel {
                     }
                     self.conversations[i].messages[placeholderIndex] = ChatMessage(
                         id: self.conversations[i].messages[placeholderIndex].id,
-                        role: "assistant",
+                        role: "assistant", // TODO: consider storing "assistant:modelName" or just metadata?
                         content: accumulated
                     )
                 }

@@ -52,6 +52,23 @@ struct ContentView: View {
                     }
             }
         }
+        .safeAreaInset(edge: .bottom) {
+            VStack(spacing: 0) {
+                Divider()
+                SettingsLink {
+                    Label("Settings", systemImage: "gear")
+                        .font(.body)
+                        .foregroundStyle(.primary)
+                        .padding(10)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+            }
+            .background(.regularMaterial)
+        }
         .searchable(
             text: $searchText,
             placement: .sidebar,
