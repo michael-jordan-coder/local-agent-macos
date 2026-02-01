@@ -14,9 +14,12 @@ final class ChatViewModel {
     private(set) var isLoading = false
     private(set) var error: String?
 
-    // Session-only system prompt
-    var sessionSystemPrompt: String = ""
     var isSystemPromptInspectorOpen: Bool = false
+
+    var currentSystemPrompt: String {
+        guard let idx = currentIndex else { return "" }
+        return conversations[idx].systemPrompt ?? ""
+    }
 
     var lastUserMessage: String? {
         guard let idx = currentIndex else { return nil }
@@ -121,8 +124,9 @@ final class ChatViewModel {
             // Build prompt before appending
             let summary = summarizationService.loadSummary()
             let recent = Array(conversations[idx].messages.suffix(recentMessageCount))
+            let sessionPrompt = conversations[idx].systemPrompt ?? ""
             let prompt = PromptBuilder.build(
-                sessionSystemPrompt: sessionSystemPrompt,
+                sessionSystemPrompt: sessionPrompt,
                 summary: summary,
                 recentMessages: recent,
                 newMessage: text
@@ -201,16 +205,20 @@ final class ChatViewModel {
         return conversations.firstIndex(where: { $0.id == id })
     }
 
-    // MARK: - Session System Prompt
+    // MARK: - Per-Conversation System Prompt
 
-    func applySessionSystemPrompt(_ text: String) {
-        sessionSystemPrompt = text
-        log.info("System prompt applied (\(text.count) chars)")
+    func applySystemPrompt(_ text: String) {
+        guard let idx = currentIndex else { return }
+        conversations[idx].systemPrompt = text
+        chatPersistence.save(conversations[idx])
+        log.info("Per-conversation system prompt applied (\(text.count) chars)")
     }
 
-    func resetSessionSystemPrompt() {
-        sessionSystemPrompt = ""
-        log.info("System prompt reset")
+    func resetSystemPrompt() {
+        guard let idx = currentIndex else { return }
+        conversations[idx].systemPrompt = nil
+        chatPersistence.save(conversations[idx])
+        log.info("Per-conversation system prompt reset")
     }
 
     // MARK: - Auto-summarization

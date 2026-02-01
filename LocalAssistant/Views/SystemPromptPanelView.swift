@@ -14,12 +14,12 @@ struct SystemPromptPanelView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack(spacing: 4) {
-                Text("Session System Prompt")
+                Text("System Prompt")
                     .font(.title.bold())
                 Image(systemName: "questionmark.circle")
                     .foregroundStyle(.secondary)
                     .popover(isPresented: $showTooltip, arrowEdge: .bottom) {
-                        Text("Set custom instructions that guide how the AI responds for this session.")
+                        Text("Set custom instructions that guide how the AI responds for this conversation.")
                             .font(.callout)
                             .padding(10)
                             .frame(width: 220)
@@ -57,17 +57,17 @@ struct SystemPromptPanelView: View {
 
                 Button {
                     draftPrompt = ""
-                    chatVM.resetSessionSystemPrompt()
+                    chatVM.resetSystemPrompt()
                     applyState = .clean
                 } label: {
                     Text("Reset")
                 }
                 .controlSize(.large)
                 .buttonStyle(.bordered)
-                .disabled(chatVM.sessionSystemPrompt.isEmpty && draftPrompt.isEmpty)
+                .disabled(chatVM.currentSystemPrompt.isEmpty && draftPrompt.isEmpty)
 
                 Button {
-                    chatVM.applySessionSystemPrompt(draftPrompt)
+                    chatVM.applySystemPrompt(draftPrompt)
                     withAnimation(.easeInOut(duration: 0.2)) {
                         applyState = .confirmed
                     }
@@ -98,11 +98,15 @@ struct SystemPromptPanelView: View {
         }
         .padding()
         .onAppear {
-            draftPrompt = chatVM.sessionSystemPrompt
+            draftPrompt = chatVM.currentSystemPrompt
+        }
+        .onChange(of: chatVM.selectedConversationID) {
+            draftPrompt = chatVM.currentSystemPrompt
+            applyState = .clean
         }
         .onChange(of: draftPrompt) {
             guard applyState != .confirmed else { return }
-            let isDirty = !draftPrompt.isEmpty && draftPrompt != chatVM.sessionSystemPrompt
+            let isDirty = !draftPrompt.isEmpty && draftPrompt != chatVM.currentSystemPrompt
             applyState = isDirty ? .dirty : .clean
         }
     }
@@ -120,9 +124,7 @@ struct SystemPromptPanelView: View {
         summarizationService: summarizationService,
         summaryViewModel: summaryVM
     )
-    chatVM.sessionSystemPrompt = "You are a helpful assistant."
-
-    return SystemPromptPanelView(chatVM: chatVM)
+    SystemPromptPanelView(chatVM: chatVM)
         .frame(width: 380)
         .padding()
 }

@@ -23,7 +23,7 @@ struct ContentView: View {
                 Button {
                     showInspector.toggle()
                 } label: {
-                    Image(systemName: chatVM.sessionSystemPrompt.isEmpty ? "doc.text" : "doc.text.fill")
+                    Image(systemName: chatVM.currentSystemPrompt.isEmpty ? "doc.text" : "doc.text.fill")
                 }
                 .help("System Prompt")
             }
