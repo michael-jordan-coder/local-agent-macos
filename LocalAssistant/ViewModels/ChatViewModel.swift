@@ -159,7 +159,8 @@ final class ChatViewModel {
             )
 
             // Append user message
-            conversations[idx].messages.append(ChatMessage(role: "user", content: text, images: imagesToSend))
+            let preview = mentionContext.map { String($0.prefix(80)) }
+            conversations[idx].messages.append(ChatMessage(role: "user", content: text, images: imagesToSend, mentionPreview: preview))
             if conversations[idx].title == "New Conversation" {
                 conversations[idx].title = String(text.prefix(50))
             }

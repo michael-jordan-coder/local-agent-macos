@@ -20,7 +20,25 @@ struct MessageRowView: View {
     private var userRow: some View {
         HStack {
             Spacer(minLength: 80)
-            VStack(alignment: .trailing, spacing: 8) {
+            VStack(alignment: .trailing, spacing: 6) {
+                if let preview = message.mentionPreview {
+                    HStack(spacing: 4) {
+                        Image(systemName: "text.quote")
+                            .font(.caption2)
+                        Text(preview)
+                            .lineLimit(1)
+                            .truncationMode(.tail)
+                    }
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(
+                        RoundedRectangle(cornerRadius: 6)
+                            .fill(Color(nsColor: .quaternaryLabelColor).opacity(0.4))
+                    )
+                }
+
                 if let images = message.images, !images.isEmpty {
                     ForEach(Array(images.enumerated()), id: \.offset) { _, data in
                         if let nsImage = NSImage(data: data) {
@@ -32,7 +50,7 @@ struct MessageRowView: View {
                         }
                     }
                 }
-                
+
                 if !message.content.isEmpty {
                     Text(message.content)
                         .font(.title3)
