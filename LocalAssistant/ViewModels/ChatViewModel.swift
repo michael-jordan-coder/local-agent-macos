@@ -39,6 +39,10 @@ final class ChatViewModel {
     private let recentMessageCount = 16
     private let summarizationThreshold = 40
 
+    // Batching constants for streaming UI updates
+    private let flushCharThreshold = 180
+    private let flushTimeInterval: TimeInterval = 0.024  // ~24ms
+
     init(
         ollamaClient: OllamaClient,
         chatPersistence: ChatPersistence,
@@ -75,13 +79,13 @@ final class ChatViewModel {
             selectedConversationID = conversations.first?.id
         }
     }
-    
+
     // MARK: - Attachments
-    
+
     func attachImage(_ data: Data) {
         selectedImages.append(data)
     }
-    
+
     func removeImage(at index: Int) {
         guard index >= 0 && index < selectedImages.count else { return }
         selectedImages.remove(at: index)
@@ -102,24 +106,26 @@ final class ChatViewModel {
         let convID = conversations[idx].id
         let text = input.trimmingCharacters(in: .whitespacesAndNewlines)
         let imagesToSend = selectedImages
-        
+
         guard !text.isEmpty || !imagesToSend.isEmpty else {
             log.warning("Send aborted: empty input")
             return
         }
 
-        log.info("Send started — conv: \(convID), input: \(text.prefix(60))")
+        log.info("Send started — conv: \(convID)")
         input = ""
         selectedImages = []
         error = nil
         isLoading = true
-        
+
         currentTask = Task {
             defer {
                 isLoading = false
                 currentTask = nil
-                log.info("Send finished — isLoading set to false")
             }
+
+            // Pre-process images off the hot path (downscale + cache base64)
+            let base64Images: [String]? = imagesToSend.isEmpty ? nil : ImageProcessor.processedBase64Array(imagesToSend)
 
             // Build prompt before appending
             let summary = summarizationService.loadSummary()
@@ -131,7 +137,6 @@ final class ChatViewModel {
                 recentMessages: recent,
                 newMessage: text
             )
-            log.debug("Prompt built (\(prompt.count) chars)")
 
             // Append user message
             conversations[idx].messages.append(ChatMessage(role: "user", content: text, images: imagesToSend))
@@ -139,34 +144,54 @@ final class ChatViewModel {
                 conversations[idx].title = String(text.prefix(50))
             }
             chatPersistence.save(conversations[idx])
-            log.info("User message appended, conversation saved")
 
             // Placeholder for streaming
             let placeholderIndex = conversations[idx].messages.count
             conversations[idx].messages.append(ChatMessage(role: "assistant", content: ""))
-            log.info("Assistant placeholder added at index \(placeholderIndex)")
 
             do {
                 var accumulated = ""
+                var buffer = ""
                 var tokenCount = 0
+                var lastFlush = Date()
                 let model = UserDefaults.standard.string(forKey: "selectedModel") ?? "llama3"
-                log.info("Streaming started with model: \(model)")
-                
-                try await ollamaClient.streamGenerate(prompt: prompt, model: model, images: imagesToSend) { [weak self] token in
+                log.info("Streaming with model: \(model)")
+
+                let flushCharThreshold = self.flushCharThreshold
+                let flushTimeInterval = self.flushTimeInterval
+
+                try await ollamaClient.streamGenerate(prompt: prompt, model: model, images: base64Images) { [weak self] token in
                     guard let self else { return }
                     accumulated += token
+                    buffer += token
                     tokenCount += 1
-                    guard let i = self.index(for: convID),
-                          placeholderIndex < self.conversations[i].messages.count else {
-                        log.warning("Token dropped: conversation index invalid")
-                        return
+
+                    let now = Date()
+                    let elapsed = now.timeIntervalSince(lastFlush)
+
+                    if buffer.count >= flushCharThreshold || elapsed >= flushTimeInterval {
+                        guard let i = self.index(for: convID),
+                              placeholderIndex < self.conversations[i].messages.count else { return }
+                        self.conversations[i].messages[placeholderIndex] = ChatMessage(
+                            id: self.conversations[i].messages[placeholderIndex].id,
+                            role: "assistant",
+                            content: accumulated
+                        )
+                        buffer = ""
+                        lastFlush = now
                     }
-                    self.conversations[i].messages[placeholderIndex] = ChatMessage(
-                        id: self.conversations[i].messages[placeholderIndex].id,
-                        role: "assistant", // TODO: consider storing "assistant:modelName" or just metadata?
+                }
+
+                // Final flush — ensure all remaining content is displayed
+                if let i = index(for: convID),
+                   placeholderIndex < conversations[i].messages.count {
+                    conversations[i].messages[placeholderIndex] = ChatMessage(
+                        id: conversations[i].messages[placeholderIndex].id,
+                        role: "assistant",
                         content: accumulated
                     )
                 }
+
                 log.info("Streaming complete — \(tokenCount) tokens, \(accumulated.count) chars")
 
                 guard let i = index(for: convID) else {
@@ -174,7 +199,6 @@ final class ChatViewModel {
                     return
                 }
                 chatPersistence.save(conversations[i])
-                log.info("Conversation saved after streaming")
                 await autoSummarizeIfNeeded(conversationID: convID)
             } catch {
                 if error is CancellationError {
@@ -183,12 +207,11 @@ final class ChatViewModel {
                     log.error("Streaming error: \(error.localizedDescription)")
                     self.error = error.localizedDescription
                 }
-                
+
                 guard let i = index(for: convID) else { return }
                 if placeholderIndex < conversations[i].messages.count,
                    conversations[i].messages[placeholderIndex].content.isEmpty {
                     conversations[i].messages.remove(at: placeholderIndex)
-                    log.info("Empty placeholder removed after error/cancel")
                 }
             }
         }
@@ -226,14 +249,13 @@ final class ChatViewModel {
     private func autoSummarizeIfNeeded(conversationID: UUID) async {
         guard let idx = index(for: conversationID),
               conversations[idx].messages.count > summarizationThreshold else {
-            log.debug("Auto-summarize skipped: below threshold")
             return
         }
 
         let toSummarize = Array(conversations[idx].messages.dropLast(recentMessageCount))
         guard !toSummarize.isEmpty else { return }
 
-        log.info("Auto-summarize started — \(toSummarize.count) messages to summarize")
+        log.info("Auto-summarize started — \(toSummarize.count) messages")
         do {
             let summaryText = try await summarizationService.generateSummary(from: toSummarize)
             summarizationService.saveSummary(summaryText)

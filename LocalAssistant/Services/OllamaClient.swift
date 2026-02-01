@@ -1,4 +1,7 @@
 import Foundation
+import os
+
+private let log = Logger(subsystem: "daniels.LocalAssistant", category: "OllamaClient")
 
 struct OllamaModel: Codable, Identifiable, Hashable {
     let name: String
@@ -8,15 +11,24 @@ struct OllamaModel: Codable, Identifiable, Hashable {
 struct OllamaClient {
     private let baseURL = "http://127.0.0.1:11434"
 
+    let session: URLSession = {
+        let config = URLSessionConfiguration.default
+        config.timeoutIntervalForRequest = 120
+        config.timeoutIntervalForResource = 120
+        config.waitsForConnectivity = false
+        config.httpMaximumConnectionsPerHost = 2
+        return URLSession(configuration: config)
+    }()
+
     /// Lists locally available models.
     func fetchModels() async throws -> [OllamaModel] {
         guard let url = URL(string: "\(baseURL)/api/tags") else { return [] }
-        let (data, _) = try await URLSession.shared.data(from: url)
-        
+        let (data, _) = try await session.data(from: url)
+
         struct ModelResponse: Decodable {
             let models: [OllamaModel]
         }
-        
+
         return try JSONDecoder().decode(ModelResponse.self, from: data).models
     }
 
@@ -26,7 +38,6 @@ struct OllamaClient {
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.timeoutInterval = 120
 
         let body: [String: Any] = [
             "model": model,
@@ -35,35 +46,31 @@ struct OllamaClient {
         ]
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
 
-        let (data, _) = try await URLSession.shared.data(for: request)
+        let (data, _) = try await session.data(for: request)
 
         struct Response: Decodable { let response: String }
         return try JSONDecoder().decode(Response.self, from: data).response
     }
 
     /// Streaming generate – calls `onToken` for each chunk on MainActor.
-    func streamGenerate(prompt: String, model: String = "llama3", images: [Data]? = nil, onToken: @escaping @MainActor (String) -> Void) async throws {
+    func streamGenerate(prompt: String, model: String = "llama3", images: [String]? = nil, onToken: @escaping @MainActor (String) -> Void) async throws {
         let url = URL(string: "\(baseURL)/api/generate")!
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.timeoutInterval = 120
+        request.setValue("keep-alive", forHTTPHeaderField: "Connection")
 
         var body: [String: Any] = [
             "model": model,
             "prompt": prompt,
             "stream": true
         ]
-        
-        if let images = images, !images.isEmpty {
-            body["images"] = images.map { $0.base64EncodedString() }
-        }
-        
-        request.httpBody = try JSONSerialization.data(withJSONObject: body)
 
-        // Use a dedicated session so we can invalidate it to force-close the connection.
-        let session = URLSession(configuration: .default)
-        defer { session.invalidateAndCancel() }
+        if let images, !images.isEmpty {
+            body["images"] = images
+        }
+
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
 
         let (bytes, _) = try await session.bytes(for: request)
 
@@ -73,6 +80,10 @@ struct OllamaClient {
         }
 
         for try await line in bytes.lines {
+            if Task.isCancelled {
+                log.info("Stream cancelled, breaking out of line loop")
+                throw CancellationError()
+            }
             guard let data = line.data(using: .utf8),
                   let chunk = try? JSONDecoder().decode(Chunk.self, from: data) else { continue }
             await onToken(chunk.response)
@@ -83,7 +94,7 @@ struct OllamaClient {
     func isReachable() async -> Bool {
         guard let url = URL(string: "\(baseURL)/api/tags") else { return false }
         do {
-            let (_, response) = try await URLSession.shared.data(from: url)
+            let (_, response) = try await session.data(from: url)
             return (response as? HTTPURLResponse)?.statusCode == 200
         } catch {
             return false
