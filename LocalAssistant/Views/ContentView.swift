@@ -97,7 +97,12 @@ struct ContentView: View {
                 loadingView
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if chatVM.selectedConversationID != nil {
-                ChatView(messages: chatVM.currentMessages, isLoading: chatVM.isLoading)
+                ChatView(
+                    messages: chatVM.currentMessages,
+                    isLoading: chatVM.isLoading,
+                    isPickingMention: chatVM.isPickingMention,
+                    onPickMention: { chatVM.selectMention($0) }
+                )
                 ComposerView(chatVM: chatVM)
             } else {
                 Text("Create a new conversation to get started")

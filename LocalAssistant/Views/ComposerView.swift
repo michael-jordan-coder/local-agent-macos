@@ -13,6 +13,32 @@ struct ComposerView: View {
                     .font(.caption)
             }
 
+            // Pick-mode banner
+            if chatVM.isPickingMention {
+                HStack(spacing: 6) {
+                    Image(systemName: "hand.tap")
+                        .font(.caption)
+                    Text("Tap an assistant message to reference it")
+                        .font(.caption)
+                    Spacer()
+                    Button("Cancel") {
+                        chatVM.isPickingMention = false
+                    }
+                    .font(.caption)
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.secondary)
+                }
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 6)
+                .background(
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(Color.accentColor.opacity(0.08))
+                )
+                .padding(.horizontal)
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+
             // Image Preview Row
             if !chatVM.selectedImages.isEmpty {
                 ScrollView(.horizontal, showsIndicators: false) {
@@ -25,7 +51,7 @@ struct ComposerView: View {
                                         .scaledToFill()
                                         .frame(width: 60, height: 60)
                                         .clipShape(RoundedRectangle(cornerRadius: 8))
-                                    
+
                                     Button {
                                         chatVM.removeImage(at: index)
                                     } label: {
@@ -45,6 +71,36 @@ struct ComposerView: View {
                     .padding(.horizontal, 4)
                 }
                 .frame(height: 70)
+            }
+
+            // Mention Chip
+            if let mentioned = chatVM.mentionedMessage {
+                HStack(spacing: 6) {
+                    Image(systemName: "text.quote")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                    Text(mentioned.content.prefix(80))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                    Spacer()
+                    Button {
+                        chatVM.clearMention()
+                    } label: {
+                        Image(systemName: "xmark")
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .background(
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(Color(nsColor: .quaternaryLabelColor).opacity(0.5))
+                )
+                .padding(.horizontal, 10)
             }
 
             HStack(alignment: .bottom, spacing: 10) {
@@ -68,10 +124,9 @@ struct ComposerView: View {
                     switch result {
                     case .success(let urls):
                         for url in urls {
-                            // Even with sandbox disabled, handling security scope is good practice for fileImporter URLs
                             let access = url.startAccessingSecurityScopedResource()
                             defer { if access { url.stopAccessingSecurityScopedResource() } }
-                            
+
                             if let data = try? Data(contentsOf: url) {
                                 chatVM.attachImage(data)
                             }
@@ -80,7 +135,23 @@ struct ComposerView: View {
                         print("Import failed: \(error.localizedDescription)")
                     }
                 }
-                
+
+                // Mention Button
+                Button {
+                    withAnimation(.easeInOut(duration: 0.15)) {
+                        chatVM.isPickingMention.toggle()
+                    }
+                } label: {
+                    Image(systemName: "text.quote")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(chatVM.isPickingMention ? Color.accentColor : .secondary)
+                        .frame(width: 32, height: 32)
+                        .background(chatVM.isPickingMention ? Color.accentColor.opacity(0.15) : Color.gray.opacity(0.1))
+                        .clipShape(Circle())
+                }
+                .buttonStyle(.plain)
+                .disabled(!chatVM.hasAssistantMessages)
+
                 // Text Input
                 TextField("Ask anything…", text: $chatVM.input, axis: .vertical)
                     .textFieldStyle(.plain)
@@ -147,6 +218,7 @@ struct ComposerView: View {
         (!chatVM.input.trimmingCharacters(in: .whitespaces).isEmpty || !chatVM.selectedImages.isEmpty) && !chatVM.isLoading
     }
 }
+
 #Preview("ComposerView") {
     let client = OllamaClient()
     let chatPersistence = ChatPersistence()
@@ -166,4 +238,3 @@ struct ComposerView: View {
             .frame(width: 600)
     }
 }
-

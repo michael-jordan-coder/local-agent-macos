@@ -38,7 +38,8 @@ enum PromptBuilder {
         sessionSystemPrompt: String,
         summary: String,
         recentMessages: [ChatMessage],
-        newMessage: String
+        newMessage: String,
+        mentionedContext: String? = nil
     ) -> String {
         var parts: [String] = []
 
@@ -63,7 +64,12 @@ enum PromptBuilder {
             parts.append("[CONVERSATION]\n\(history)")
         }
 
-        // 4) New user message
+        // 4) Referenced message (mention)
+        if let mentioned = mentionedContext {
+            parts.append("[REFERENCED]\nThe user is referencing this earlier assistant response:\n\(mentioned)")
+        }
+
+        // 5) New user message
         parts.append("USER: \(newMessage)")
 
         return parts.joined(separator: "\n\n")

@@ -15,6 +15,22 @@ final class ChatViewModel {
     private(set) var error: String?
 
     var isSystemPromptInspectorOpen: Bool = false
+    var mentionedMessage: ChatMessage?
+    var isPickingMention: Bool = false
+
+    var hasAssistantMessages: Bool {
+        guard let idx = currentIndex else { return false }
+        return conversations[idx].messages.contains { $0.role == "assistant" && !$0.content.isEmpty }
+    }
+
+    func clearMention() {
+        mentionedMessage = nil
+    }
+
+    func selectMention(_ message: ChatMessage) {
+        mentionedMessage = message
+        isPickingMention = false
+    }
 
     var currentSystemPrompt: String {
         guard let idx = currentIndex else { return "" }
@@ -112,9 +128,12 @@ final class ChatViewModel {
             return
         }
 
+        let mentionContext: String? = mentionedMessage.map { String($0.content.prefix(500)) }
+
         log.info("Send started — conv: \(convID)")
         input = ""
         selectedImages = []
+        mentionedMessage = nil
         error = nil
         isLoading = true
 
@@ -135,7 +154,8 @@ final class ChatViewModel {
                 sessionSystemPrompt: sessionPrompt,
                 summary: summary,
                 recentMessages: recent,
-                newMessage: text
+                newMessage: text,
+                mentionedContext: mentionContext
             )
 
             // Append user message

@@ -4,6 +4,8 @@ import SwiftUI
 struct MessageRowView: View {
     let message: ChatMessage
     var isStreaming: Bool = false
+    var isPickingMention: Bool = false
+    var onPickMention: ((ChatMessage) -> Void)?
 
     var body: some View {
         switch message.role {
@@ -44,6 +46,10 @@ struct MessageRowView: View {
 
     // MARK: - Assistant (left-aligned, SF icon, code blocks)
 
+    @State private var copyHover = false
+    @State private var copied = false
+    @State private var pickHover = false
+
     private var assistantRow: some View {
         HStack(alignment: .top, spacing: 8) {
             Group {
@@ -54,16 +60,11 @@ struct MessageRowView: View {
                 }
             }
             .frame(width: 20)
-           
 
             VStack(alignment: .leading, spacing: 8) {
                 ForEach(Self.parseContent(message.content)) { segment in
                     switch segment.kind {
                     case .text(let text):
-                        // MarkdownUI handles full block-level rendering (headings,
-                        // lists, thematic breaks, paragraphs) plus inline formatting.
-                        // Streaming-safe: partial/malformed Markdown is rendered
-                        // best-effort by the library; it never crashes on incomplete input.
                         Markdown(text)
                             .markdownTheme(.assistantMessage)
                             .environment(\.openURL, OpenURLAction { url in
@@ -74,7 +75,51 @@ struct MessageRowView: View {
                         CodeBlockView(language: language, code: code)
                     }
                 }
+
+                if !isStreaming && !message.content.isEmpty {
+                    Button {
+                        NSPasteboard.general.clearContents()
+                        NSPasteboard.general.setString(message.content, forType: .string)
+                        withAnimation(.easeInOut(duration: 0.15)) { copied = true }
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                            withAnimation(.easeInOut(duration: 0.15)) { copied = false }
+                        }
+                    } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: copied ? "checkmark" : "doc.on.doc")
+                            Text(copied ? "Copied" : "Copy")
+                        }
+                        .font(.caption)
+                        .foregroundStyle(copied ? Color.green : (copyHover ? Color.primary : Color.secondary.opacity(0.5)))
+                        .padding(.vertical, 4)
+                        .padding(.horizontal, 8)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .onHover { hovering in copyHover = hovering }
+                }
             }
+            .padding(isPickingMention ? 8 : 0)
+            .background(
+                Group {
+                    if isPickingMention {
+                        RoundedRectangle(cornerRadius: 10)
+                            .fill(pickHover ? Color.accentColor.opacity(0.08) : Color.clear)
+                            .strokeBorder(pickHover ? Color.accentColor.opacity(0.5) : Color(nsColor: .separatorColor).opacity(0.4), lineWidth: 1.5)
+                    }
+                }
+            )
+            .contentShape(isPickingMention ? Rectangle() : Rectangle())
+            .onHover { hovering in
+                if isPickingMention { pickHover = hovering }
+            }
+            .onTapGesture {
+                if isPickingMention, !message.content.isEmpty {
+                    onPickMention?(message)
+                }
+            }
+            .animation(.easeInOut(duration: 0.15), value: pickHover)
+            .animation(.easeInOut(duration: 0.15), value: isPickingMention)
 
             Spacer(minLength: 80)
         }
@@ -145,28 +190,41 @@ struct MessageRowView: View {
     }
 }
 
-// MARK: - Assistant Markdown Theme - the styling for the ai answear
+// MARK: - Assistant Markdown Theme
 
 /// Custom MarkdownUI theme for assistant messages.
-/// Semantic text styles with clear heading hierarchy,
-/// visible thematic breaks (---), and subtle inline code styling.
+/// Tuned for macOS readability: clear heading hierarchy, comfortable list spacing,
+/// subtle blockquotes, and lightweight inline/block code styling.
 extension MarkdownUI.Theme {
-    /// Semantic text styles for assistant messages.
-    /// .text and .code are TextStyle builders (inline); heading/paragraph/etc are BlockStyle builders.
     static let assistantMessage = Theme()
-        // Inline text: slightly larger than default .body (13pt)
+
+        // MARK: Inline text styles
+
         .text {
             FontSize(16)
         }
-        // Headings: scaled up proportionally
+        .strong {
+            FontWeight(.semibold)
+        }
+        .link {
+            ForegroundColor(.accentColor)
+            UnderlineStyle(.single)
+        }
+        .code {
+            FontFamilyVariant(.monospaced)
+            FontSize(.em(0.88))
+            BackgroundColor(Color(nsColor: .quaternaryLabelColor).opacity(0.4))
+        }
+
+        // MARK: Headings
+
         .heading1 { configuration in
             configuration.label
                 .markdownTextStyle {
                     FontSize(30)
                     FontWeight(.semibold)
                 }
-                .padding(.top, 8)
-                .padding(.bottom, 3)
+                .markdownMargin(top: 12, bottom: 6)
         }
         .heading2 { configuration in
             configuration.label
@@ -174,8 +232,7 @@ extension MarkdownUI.Theme {
                     FontSize(26)
                     FontWeight(.semibold)
                 }
-                .padding(.top, 6)
-                .padding(.bottom, 2)
+                .markdownMargin(top: 10, bottom: 4)
         }
         .heading3 { configuration in
             configuration.label
@@ -183,8 +240,7 @@ extension MarkdownUI.Theme {
                     FontSize(22)
                     FontWeight(.semibold)
                 }
-                .padding(.top, 4)
-                .padding(.bottom, 2)
+                .markdownMargin(top: 8, bottom: 4)
         }
         .heading4 { configuration in
             configuration.label
@@ -192,7 +248,7 @@ extension MarkdownUI.Theme {
                     FontSize(19)
                     FontWeight(.semibold)
                 }
-                .padding(.top, 3)
+                .markdownMargin(top: 6, bottom: 2)
         }
         .heading5 { configuration in
             configuration.label
@@ -200,7 +256,7 @@ extension MarkdownUI.Theme {
                     FontSize(17)
                     FontWeight(.semibold)
                 }
-                .padding(.top, 2)
+                .markdownMargin(top: 4, bottom: 2)
         }
         .heading6 { configuration in
             configuration.label
@@ -209,24 +265,77 @@ extension MarkdownUI.Theme {
                     FontWeight(.semibold)
                     ForegroundColor(.secondary)
                 }
+                .markdownMargin(top: 4, bottom: 2)
         }
-        // Horizontal rule (---) → visible Divider separator
+
+        // MARK: Paragraphs
+
+        .paragraph { configuration in
+            configuration.label
+                .fixedSize(horizontal: false, vertical: true)
+                .relativeLineSpacing(.em(0.15))
+                .markdownMargin(top: 0, bottom: 8)
+        }
+
+        // MARK: Lists
+
+        .list { configuration in
+            configuration.label
+                .markdownMargin(top: 4, bottom: 4)
+        }
+        .listItem { configuration in
+            configuration.label
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.leading, 2)
+                .markdownMargin(top: .em(0.2))
+        }
+        .bulletedListMarker { configuration in
+            Text("•")
+                .font(.system(size: 16, weight: .regular))
+                .foregroundStyle(configuration.listLevel == 1 ? .primary : .secondary)
+        }
+        .numberedListMarker { configuration in
+            Text("\(configuration.itemNumber).")
+                .font(.system(size: 15, weight: .medium).monospacedDigit())
+                .foregroundStyle(.primary)
+        }
+        .taskListMarker { configuration in
+            Image(systemName: configuration.isCompleted ? "checkmark.square.fill" : "square")
+                .symbolRenderingMode(.hierarchical)
+                .foregroundStyle(configuration.isCompleted ? Color.accentColor : .secondary)
+                .font(.system(size: 15))
+        }
+
+        // MARK: Blockquotes
+
+        .blockquote { configuration in
+            configuration.label
+                .markdownTextStyle {
+                    FontSize(.em(0.95))
+                    ForegroundColor(.secondary)
+                }
+                .relativePadding(.leading, length: .em(0.6))
+                .padding(.vertical, 6)
+                .padding(.trailing, 8)
+                .fixedSize(horizontal: false, vertical: true)
+                .overlay(alignment: .leading) {
+                    RoundedRectangle(cornerRadius: 1.5)
+                        .fill(Color(nsColor: .tertiaryLabelColor))
+                        .frame(width: 3)
+                }
+                .padding(.leading, 2)
+                .markdownMargin(top: 6, bottom: 6)
+        }
+
+        // MARK: Thematic break
+
         .thematicBreak {
             Divider()
-                .padding(.vertical, 8)
+                .padding(.vertical, 10)
         }
-        // Links: accent-colored + underlined, opened via NSWorkspace
-        .link {
-            ForegroundColor(.accentColor)
-            UnderlineStyle(.single)
-        }
-        // Inline code: monospace, slightly smaller, subtle background
-        .code {
-            FontFamilyVariant(.monospaced)
-            FontSize(.em(0.9))
-            BackgroundColor(Color(nsColor: .quaternaryLabelColor))
-        }
-        // Fallback code blocks (only if parseContent misses a fence)
+
+        // MARK: Fallback code block
+
         .codeBlock { configuration in
             ScrollView(.horizontal, showsIndicators: true) {
                 configuration.label
@@ -234,15 +343,32 @@ extension MarkdownUI.Theme {
                         FontFamilyVariant(.monospaced)
                         FontSize(.em(0.85))
                     }
-                    .padding(10)
+                    .padding(14)
             }
-            .background(Color(nsColor: .quaternaryLabelColor).opacity(0.5),
-                         in: RoundedRectangle(cornerRadius: 8))
+            .background(
+                Color(nsColor: .quaternaryLabelColor).opacity(0.5),
+                in: RoundedRectangle(cornerRadius: 8)
+            )
+            .markdownMargin(top: 6, bottom: 6)
         }
-        // Paragraphs: let text wrap naturally
-        .paragraph { configuration in
+
+        // MARK: Tables
+
+        .table { configuration in
             configuration.label
                 .fixedSize(horizontal: false, vertical: true)
+                .markdownMargin(top: 8, bottom: 8)
+        }
+        .tableCell { configuration in
+            configuration.label
+                .markdownTextStyle {
+                    if configuration.row == 0 {
+                        FontWeight(.semibold)
+                    }
+                }
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.vertical, 6)
+                .padding(.horizontal, 8)
         }
 }
 

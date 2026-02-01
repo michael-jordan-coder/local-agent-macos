@@ -3,6 +3,8 @@ import SwiftUI
 struct ChatView: View {
     let messages: [ChatMessage]
     var isLoading: Bool = false
+    var isPickingMention: Bool = false
+    var onPickMention: ((ChatMessage) -> Void)?
 
     var body: some View {
         GeometryReader { geometry in
@@ -15,7 +17,9 @@ struct ChatView: View {
                             ForEach(messages) { message in
                                 MessageRowView(
                                     message: message,
-                                    isStreaming: isLoading && message.id == messages.last?.id && message.role == "assistant"
+                                    isStreaming: isLoading && message.id == messages.last?.id && message.role == "assistant",
+                                    isPickingMention: isPickingMention,
+                                    onPickMention: onPickMention
                                 )
                             }
                         }
@@ -56,4 +60,3 @@ struct ChatView: View {
     return ChatView(messages: messages)
         .frame(width: 600, height: 400)
 }
-
