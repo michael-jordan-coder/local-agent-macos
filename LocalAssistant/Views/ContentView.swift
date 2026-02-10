@@ -90,9 +90,9 @@ struct ContentView: View {
         } label: {
             HStack(spacing: 6) {
                 Image(systemName: sidebarTab == .chats ? "plus.message" : "plus")
-                    .font(.system(size: 12, weight: .medium))
+                    .font(.subheadline)
                 Text(sidebarTab == .chats ? "New Chat" : "New Prompt")
-                    .font(.system(size: 13, weight: .medium))
+                    .font(.subheadline.weight(.medium))
                 Spacer()
             }
             .foregroundStyle(.primary)
@@ -113,23 +113,16 @@ struct ContentView: View {
     // MARK: - Tab Picker
 
     private var sidebarTabPicker: some View {
-        HStack(spacing: 16) {
-            ForEach(SidebarTab.allCases, id: \.self) { tab in
-                let isActive = sidebarTab == tab
-                Button {
-                    withAnimation(.easeInOut(duration: 0.15)) {
-                        sidebarTab = tab
-                    }
-                } label: {
-                    Text(tab == .chats ? "Chats" : "Prompts")
-                        .font(.system(size: 12, weight: isActive ? .semibold : .regular))
-                        .foregroundStyle(isActive ? .primary : .tertiary)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 6)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
+        HStack {
+            Picker("", selection: $sidebarTab) {
+                Text("Chats").tag(SidebarTab.chats)
+                Text("Prompts").tag(SidebarTab.prompts)
             }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .fixedSize()
+
+            Spacer()
         }
     }
 
@@ -185,7 +178,7 @@ struct ContentView: View {
             } else if chatVM.conversations.isEmpty {
                 VStack(spacing: 12) {
                     Image(systemName: "bubble.left.and.text.bubble.right")
-                        .font(.system(size: 36, weight: .ultraLight))
+                        .font(.largeTitle.weight(.ultraLight))
                         .foregroundStyle(.quaternary)
                     Text("No conversations yet")
                         .font(.subheadline)
@@ -217,11 +210,11 @@ struct ContentView: View {
         HStack(spacing: 4) {
             if let icon {
                 Image(systemName: icon)
-                    .font(.system(size: 9, weight: .semibold))
+                    .font(.caption2.weight(.semibold))
                     .foregroundStyle(.tertiary)
             }
             Text(title.uppercased())
-                .font(.system(size: 10, weight: .semibold, design: .rounded))
+                .font(.caption2.weight(.semibold))
                 .foregroundStyle(.tertiary)
                 .tracking(0.8)
         }
@@ -233,13 +226,13 @@ struct ContentView: View {
     private func conversationRow(_ conv: Conversation) -> some View {
         HStack {
             Text(conv.title)
-                .font(.system(size: 13, weight: .medium))
+                .font(.body)
                 .lineLimit(1)
 
             Spacer(minLength: 0)
 
             Text(conv.lastActiveDate, format: .relative(presentation: .named))
-                .font(.system(size: 11))
+                .font(.caption)
                 .foregroundStyle(.tertiary)
                 .lineLimit(1)
         }
@@ -296,10 +289,10 @@ struct ContentView: View {
                 SettingsLink {
                     HStack(spacing: 6) {
                         Image(systemName: "gearshape")
-                            .font(.system(size: 12, weight: .medium))
+                            .font(.caption)
                             .foregroundStyle(.secondary)
                         Text("Settings")
-                            .font(.system(size: 12, weight: .medium))
+                            .font(.caption)
                             .foregroundStyle(.secondary)
                     }
                     .padding(.horizontal, 10)
@@ -323,7 +316,7 @@ struct ContentView: View {
 
     private var modelBadge: some View {
         Text(selectedModel)
-            .font(.system(size: 9, weight: .semibold, design: .monospaced))
+            .font(.caption2.weight(.semibold).monospaced())
             .foregroundStyle(Color(red: 0.55, green: 0.75, blue: 0.95))
             .padding(.horizontal, 7)
             .padding(.vertical, 3)
