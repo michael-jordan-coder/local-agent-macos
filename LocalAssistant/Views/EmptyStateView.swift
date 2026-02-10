@@ -6,7 +6,7 @@ struct EmptyStateView: View {
             Image(systemName: "desktopcomputer")
                 .font(.system(size: 48, weight: .light))
                 .foregroundStyle(.tertiary)
-            
+
             Text("How can I help you today?")
                 .font(.title2)
                 .fontWeight(.medium)

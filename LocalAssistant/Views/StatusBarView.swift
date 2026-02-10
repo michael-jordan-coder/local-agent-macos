@@ -36,21 +36,9 @@ struct StatusBarView: View {
         }
     }
 }
+
 #Preview("StatusBarView - Ready") {
     StatusBarView(status: .ready)
         .frame(maxWidth: .infinity)
         .padding()
 }
-
-#Preview("StatusBarView - Checking") {
-    StatusBarView(status: .checking)
-        .frame(maxWidth: .infinity)
-        .padding()
-}
-
-#Preview("StatusBarView - Failed") {
-    StatusBarView(status: .failed("Connection refused"))
-        .frame(maxWidth: .infinity)
-        .padding()
-}
-

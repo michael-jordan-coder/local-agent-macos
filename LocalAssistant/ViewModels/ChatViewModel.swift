@@ -96,6 +96,21 @@ final class ChatViewModel {
         }
     }
 
+    func renameConversation(id: UUID, to newTitle: String) {
+        let trimmed = newTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, let idx = index(for: id) else { return }
+        conversations[idx].title = trimmed
+        chatPersistence.save(conversations[idx])
+        log.info("Renamed conversation \(id) to: \(trimmed)")
+    }
+
+    func togglePin(id: UUID) {
+        guard let idx = index(for: id) else { return }
+        conversations[idx].isPinned.toggle()
+        chatPersistence.save(conversations[idx])
+        log.info("Toggled pin for conversation \(id): \(self.conversations[idx].isPinned)")
+    }
+
     // MARK: - Attachments
 
     func attachImage(_ data: Data) {

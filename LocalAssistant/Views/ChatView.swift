@@ -13,7 +13,7 @@ struct ChatView: View {
             } else {
                 ScrollViewReader { proxy in
                     ScrollView {
-                        LazyVStack(spacing: 16) {
+                        LazyVStack(spacing: 32) {
                             ForEach(messages) { message in
                                 MessageRowView(
                                     message: message,
@@ -23,7 +23,9 @@ struct ChatView: View {
                                 )
                             }
                         }
-                        .padding(paddingFor(width: geometry.size.width))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, paddingFor(width: geometry.size.width))
+                        .padding(.vertical, 24)
                     }
                     .onChange(of: messages.count) {
                         if let last = messages.last {
@@ -50,6 +52,7 @@ struct ChatView: View {
         }
     }
 }
+
 #Preview("ChatView") {
     let messages: [ChatMessage] = [
         ChatMessage(role: "system", content: "System initialized."),

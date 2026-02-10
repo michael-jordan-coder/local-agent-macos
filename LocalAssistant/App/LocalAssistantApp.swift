@@ -6,7 +6,7 @@ struct LocalAssistantApp: App {
     @State private var statusVM: AppStatusViewModel
     @State private var chatVM: ChatViewModel
     @State private var summaryVM: SummaryViewModel
-    @AppStorage("appTheme") private var appTheme: String = "Dark"
+    @State private var savedPromptsVM: SavedPromptsViewModel
 
     init() {
         try? SMAppService.mainApp.register()
@@ -24,6 +24,7 @@ struct LocalAssistantApp: App {
             summaryViewModel: summaryVM
         ))
         _summaryVM = State(initialValue: summaryVM)
+        _savedPromptsVM = State(initialValue: SavedPromptsViewModel())
     }
 
     var body: some Scene {
@@ -31,21 +32,33 @@ struct LocalAssistantApp: App {
             ContentView(
                 statusVM: statusVM,
                 chatVM: chatVM,
-                summaryVM: summaryVM
+                summaryVM: summaryVM,
+                savedPromptsVM: savedPromptsVM
             )
-            .preferredColorScheme(appTheme == "Dark" ? .dark : (appTheme == "Light" ? .light : nil))
+            .preferredColorScheme(.dark)
             .task { await statusVM.ensureRunning() }
-            .onAppear { centerWindow() }
+            .onAppear { styleWindow() }
         }
-        
+        .commands {
+            CommandGroup(after: .newItem) {
+                Button("New Conversation") {
+                    chatVM.newConversation()
+                }
+                .keyboardShortcut("n", modifiers: .command)
+            }
+        }
+
         Settings {
             SettingsView()
+                .preferredColorScheme(.dark)
         }
     }
 
-    private func centerWindow() {
+    private func styleWindow() {
         DispatchQueue.main.async {
             guard let window = NSApplication.shared.windows.first else { return }
+            window.titlebarAppearsTransparent = true
+            window.backgroundColor = NSColor(Color.appWindowBg)
             window.center()
             window.makeKeyAndOrderFront(nil)
             NSApp.activate(ignoringOtherApps: true)

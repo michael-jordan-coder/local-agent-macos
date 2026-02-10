@@ -62,85 +62,112 @@ struct MessageRowView: View {
         }
     }
 
-    // MARK: - Assistant (left-aligned, SF icon, code blocks)
+    // MARK: - Assistant (left-aligned, hover actions)
 
-    @State private var copyHover = false
+    @State private var rowHover = false
     @State private var copied = false
     @State private var pickHover = false
 
     private var assistantRow: some View {
-        HStack(alignment: .top, spacing: 8) {
-            Group {
-                if isStreaming {
-                    SpinnerView()
-                } else {
-                    Color.clear
-                }
-            }
-            .frame(width: 20)
+        VStack(alignment: .leading, spacing: 16) {
+            let segments = Self.parseContent(message.content)
 
-            VStack(alignment: .leading, spacing: 8) {
-                ForEach(Self.parseContent(message.content)) { segment in
-                    switch segment.kind {
-                    case .text(let text):
+            ForEach(segments) { segment in
+                switch segment.kind {
+                case .text(let text):
+                    let isLast = segment.id == segments.last?.id
+                    if isStreaming && isLast {
+                        HStack(alignment: .lastTextBaseline, spacing: 0) {
+                            Markdown(text)
+                                .font(.body)
+                                .markdownTheme(.assistantMessage)
+                                .environment(\.openURL, OpenURLAction { url in
+                                    NSWorkspace.shared.open(url)
+                                    return .handled
+                                })
+                            StreamingCursorView()
+                        }
+                    } else {
                         Markdown(text)
+                            .font(.body)
                             .markdownTheme(.assistantMessage)
                             .environment(\.openURL, OpenURLAction { url in
                                 NSWorkspace.shared.open(url)
                                 return .handled
                             })
-                    case .codeBlock(let language, let code):
-                        CodeBlockView(language: language, code: code)
                     }
+                case .codeBlock(let language, let code):
+                    CodeBlockView(language: language, code: code)
                 }
+            }
 
-                if !isStreaming && !message.content.isEmpty {
+            // Pulsing dot when content is empty and still streaming
+            if isStreaming && message.content.isEmpty {
+                PulsingDotView()
+            }
+
+            // Hover actions row
+            if !isStreaming && !message.content.isEmpty {
+                HStack(spacing: 4) {
                     Button {
                         NSPasteboard.general.clearContents()
                         NSPasteboard.general.setString(message.content, forType: .string)
                         withAnimation(.easeInOut(duration: 0.15)) { copied = true }
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                        Task {
+                            try? await Task.sleep(for: .seconds(1.5))
                             withAnimation(.easeInOut(duration: 0.15)) { copied = false }
                         }
                     } label: {
-                        HStack(spacing: 4) {
-                            Image(systemName: copied ? "checkmark" : "doc.on.doc")
-                            Text(copied ? "Copied" : "Copy")
-                        }
-                        .font(.caption)
-                        .foregroundStyle(copied ? Color.green : (copyHover ? Color.primary : Color.secondary.opacity(0.5)))
-                        .padding(.vertical, 4)
-                        .padding(.horizontal, 8)
-                        .contentShape(Rectangle())
+                        Image(systemName: copied ? "checkmark" : "doc.on.doc")
+                            .font(.caption)
+                            .foregroundStyle(copied ? Color.green : Color.secondary)
+                            .frame(width: 24, height: 24)
+                            .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
-                    .onHover { hovering in copyHover = hovering }
-                }
-            }
-            .padding(isPickingMention ? 8 : 0)
-            .background(
-                Group {
-                    if isPickingMention {
-                        RoundedRectangle(cornerRadius: 10)
-                            .fill(pickHover ? Color.accentColor.opacity(0.08) : Color.clear)
-                            .strokeBorder(pickHover ? Color.accentColor.opacity(0.5) : Color(nsColor: .separatorColor).opacity(0.4), lineWidth: 1.5)
-                    }
-                }
-            )
-            .contentShape(isPickingMention ? Rectangle() : Rectangle())
-            .onHover { hovering in
-                if isPickingMention { pickHover = hovering }
-            }
-            .onTapGesture {
-                if isPickingMention, !message.content.isEmpty {
-                    onPickMention?(message)
-                }
-            }
-            .animation(.easeInOut(duration: 0.15), value: pickHover)
-            .animation(.easeInOut(duration: 0.15), value: isPickingMention)
+                    .help(copied ? "Copied" : "Copy message")
 
-            Spacer(minLength: 80)
+                    Button {
+                        // TODO: wire to chatVM.regenerate()
+                    } label: {
+                        Image(systemName: "arrow.clockwise")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .frame(width: 24, height: 24)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .help("Regenerate")
+                }
+                .opacity(rowHover || copied ? 1 : 0)
+                .animation(.easeInOut(duration: 0.15), value: rowHover)
+                .animation(.easeInOut(duration: 0.15), value: copied)
+            }
         }
+        .padding(isPickingMention ? 8 : 0)
+        .background(
+            Group {
+                if isPickingMention {
+                    RoundedRectangle(cornerRadius: 10)
+                        .fill(pickHover ? Color.accentColor.opacity(0.08) : Color.clear)
+                        .strokeBorder(pickHover ? Color.accentColor.opacity(0.5) : Color(nsColor: .separatorColor).opacity(0.4), lineWidth: 1.5)
+                }
+            }
+        )
+        .contentShape(Rectangle())
+        .onHover { hovering in
+            rowHover = hovering
+            if isPickingMention { pickHover = hovering }
+        }
+        .onTapGesture {
+            if isPickingMention, !message.content.isEmpty {
+                onPickMention?(message)
+            }
+        }
+        .animation(.easeInOut(duration: 0.15), value: pickHover)
+        .animation(.easeInOut(duration: 0.15), value: isPickingMention)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.trailing, 80)
     }
 
     // MARK: - System (dimmed)
@@ -210,79 +237,59 @@ struct MessageRowView: View {
 
 // MARK: - Assistant Markdown Theme
 
-/// Custom MarkdownUI theme for assistant messages.
-/// Tuned for macOS readability: clear heading hierarchy, comfortable list spacing,
-/// subtle blockquotes, and lightweight inline/block code styling.
 extension MarkdownUI.Theme {
     static let assistantMessage = Theme()
 
         // MARK: Inline text styles
 
-        .text {
-            FontSize(16)
-        }
+        .text { }
         .strong {
-            FontWeight(.semibold)
+            FontWeight(.heavy)
         }
         .link {
             ForegroundColor(.accentColor)
-            UnderlineStyle(.single)
+            FontWeight(.medium)
         }
         .code {
             FontFamilyVariant(.monospaced)
-            FontSize(.em(0.88))
-            BackgroundColor(Color(nsColor: .quaternaryLabelColor).opacity(0.4))
+            FontSize(.em(0.85))
+            BackgroundColor(Color(white: 0.18))
         }
 
         // MARK: Headings
 
         .heading1 { configuration in
-            configuration.label
-                .markdownTextStyle {
-                    FontSize(30)
-                    FontWeight(.semibold)
-                }
-                .markdownMargin(top: 12, bottom: 6)
+            VStack(alignment: .leading, spacing: 6) {
+                configuration.label
+                    .font(.largeTitle.weight(.bold))
+                Divider()
+            }
+            .markdownMargin(top: 16, bottom: 8)
         }
         .heading2 { configuration in
             configuration.label
-                .markdownTextStyle {
-                    FontSize(26)
-                    FontWeight(.semibold)
-                }
-                .markdownMargin(top: 10, bottom: 4)
+                .font(.title.weight(.bold))
+                .markdownMargin(top: 14, bottom: 6)
         }
         .heading3 { configuration in
             configuration.label
-                .markdownTextStyle {
-                    FontSize(22)
-                    FontWeight(.semibold)
-                }
-                .markdownMargin(top: 8, bottom: 4)
+                .font(.title2.weight(.semibold))
+                .markdownMargin(top: 4, bottom: 4)
         }
         .heading4 { configuration in
             configuration.label
-                .markdownTextStyle {
-                    FontSize(19)
-                    FontWeight(.semibold)
-                }
-                .markdownMargin(top: 6, bottom: 2)
+                .font(.title3.weight(.semibold))
+                .markdownMargin(top: 8, bottom: 4)
         }
         .heading5 { configuration in
             configuration.label
-                .markdownTextStyle {
-                    FontSize(17)
-                    FontWeight(.semibold)
-                }
-                .markdownMargin(top: 4, bottom: 2)
+                .font(.headline)
+                .markdownMargin(top: 6, bottom: 2)
         }
         .heading6 { configuration in
             configuration.label
-                .markdownTextStyle {
-                    FontSize(15)
-                    FontWeight(.semibold)
-                    ForegroundColor(.secondary)
-                }
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(.secondary)
                 .markdownMargin(top: 4, bottom: 2)
         }
 
@@ -291,31 +298,33 @@ extension MarkdownUI.Theme {
         .paragraph { configuration in
             configuration.label
                 .fixedSize(horizontal: false, vertical: true)
-                .relativeLineSpacing(.em(0.15))
-                .markdownMargin(top: 0, bottom: 8)
+                .relativeLineSpacing(.em(0.25))
+                .markdownMargin(top: 0, bottom: 18
+                )
         }
 
         // MARK: Lists
 
         .list { configuration in
             configuration.label
-                .markdownMargin(top: 4, bottom: 4)
+                .markdownMargin(top: 6, bottom: 8)
         }
         .listItem { configuration in
             configuration.label
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.leading, 2)
-                .markdownMargin(top: .em(0.2))
+                .markdownMargin(top: .em(0.3))
         }
-        .bulletedListMarker { configuration in
-            Text("•")
-                .font(.system(size: 16, weight: .regular))
-                .foregroundStyle(configuration.listLevel == 1 ? .primary : .secondary)
+        .bulletedListMarker { _ in
+            Circle()
+                .fill(.secondary)
+                .frame(width: 5, height: 5)
+                .offset(y: 1)
         }
         .numberedListMarker { configuration in
             Text("\(configuration.itemNumber).")
-                .font(.system(size: 15, weight: .medium).monospacedDigit())
-                .foregroundStyle(.primary)
+                .font(.system(size: 14, weight: .medium).monospacedDigit())
+                .foregroundStyle(.tertiary)
         }
         .taskListMarker { configuration in
             Image(systemName: configuration.isCompleted ? "checkmark.square.fill" : "square")
@@ -330,42 +339,56 @@ extension MarkdownUI.Theme {
             configuration.label
                 .markdownTextStyle {
                     FontSize(.em(0.95))
+                    FontStyle(.italic)
                     ForegroundColor(.secondary)
                 }
-                .relativePadding(.leading, length: .em(0.6))
-                .padding(.vertical, 6)
+                .padding(.leading, 14)
+                .padding(.vertical, 8)
                 .padding(.trailing, 8)
                 .fixedSize(horizontal: false, vertical: true)
+                .background(
+                    RoundedRectangle(cornerRadius: 6)
+                        .fill(Color(white: 0.1).opacity(0.5))
+                )
                 .overlay(alignment: .leading) {
                     RoundedRectangle(cornerRadius: 1.5)
-                        .fill(Color(nsColor: .tertiaryLabelColor))
+                        .fill(Color.accentColor.opacity(0.5))
                         .frame(width: 3)
                 }
-                .padding(.leading, 2)
-                .markdownMargin(top: 6, bottom: 6)
+                .markdownMargin(top: 8, bottom: 8)
         }
 
         // MARK: Thematic break
 
         .thematicBreak {
-            Divider()
-                .padding(.vertical, 10)
+            HStack {
+                Spacer()
+                Capsule()
+                    .fill(.tertiary)
+                    .frame(width: 60, height: 2)
+                Spacer()
+            }
+            .padding(.vertical, 16)
+            .zIndex(1)
         }
 
         // MARK: Fallback code block
 
         .codeBlock { configuration in
-            ScrollView(.horizontal, showsIndicators: true) {
+            ScrollView(.horizontal, showsIndicators: false) {
                 configuration.label
                     .markdownTextStyle {
                         FontFamilyVariant(.monospaced)
                         FontSize(.em(0.85))
                     }
-                    .padding(14)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 14)
             }
-            .background(
-                Color(nsColor: .quaternaryLabelColor).opacity(0.5),
-                in: RoundedRectangle(cornerRadius: 8)
+            .background(Color(white: 0.08))
+            .clipShape(RoundedRectangle(cornerRadius: 10))
+            .overlay(
+                RoundedRectangle(cornerRadius: 10)
+                    .strokeBorder(Color(white: 0.15), lineWidth: 1)
             )
             .markdownMargin(top: 6, bottom: 6)
         }
@@ -375,6 +398,11 @@ extension MarkdownUI.Theme {
         .table { configuration in
             configuration.label
                 .fixedSize(horizontal: false, vertical: true)
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8)
+                        .strokeBorder(Color(white: 0.15), lineWidth: 1)
+                )
                 .markdownMargin(top: 8, bottom: 8)
         }
         .tableCell { configuration in
@@ -387,6 +415,11 @@ extension MarkdownUI.Theme {
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.vertical, 6)
                 .padding(.horizontal, 8)
+                .background(
+                    configuration.row == 0
+                        ? Color(white: 0.14)
+                        : (configuration.row.isMultiple(of: 2) ? Color(white: 0.1).opacity(0.3) : Color.clear)
+                )
         }
 }
 
@@ -396,61 +429,162 @@ struct CodeBlockView: View {
     let language: String
     let code: String
 
+    @State private var copied = false
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
+            // Header bar
             HStack {
-                if !language.isEmpty {
-                    Text(language)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
+                Text(language.isEmpty ? "code" : language.capitalized)
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(.tertiary)
+
                 Spacer()
+
                 Button {
                     NSPasteboard.general.clearContents()
                     NSPasteboard.general.setString(code, forType: .string)
+                    withAnimation(.easeInOut(duration: 0.15)) { copied = true }
+                    Task {
+                        try? await Task.sleep(for: .seconds(1.5))
+                        withAnimation(.easeInOut(duration: 0.15)) { copied = false }
+                    }
                 } label: {
-                    Label("Copy", systemImage: "doc.on.doc")
-                        .font(.caption)
+                    HStack(spacing: 3) {
+                        Image(systemName: copied ? "checkmark" : "doc.on.doc")
+                        Text(copied ? "Copied" : "Copy")
+                    }
+                    .font(.caption)
+                    .foregroundStyle(copied ? Color.green : Color.secondary)
                 }
-                .buttonStyle(.borderless)
+                .buttonStyle(.plain)
             }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 6)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(Color(white: 0.12))
 
-            Divider()
-
-            ScrollView(.horizontal, showsIndicators: true) {
+            // Code content
+            ScrollView(.horizontal, showsIndicators: false) {
                 Text(code)
-                    .font(.system(.body, design: .monospaced))
+                    .font(.system(size: 14, design: .monospaced))
                     .textSelection(.enabled)
-                    .padding(16)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 14)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
+            .background(Color(white: 0.08))
         }
-        .background(Color.black.opacity(0.2), in: RoundedRectangle(cornerRadius: 8))
+        .clipShape(RoundedRectangle(cornerRadius: 10))
+        .overlay(
+            RoundedRectangle(cornerRadius: 10)
+                .strokeBorder(Color(white: 0.15), lineWidth: 1)
+        )
     }
 }
 
-// MARK: - Spinner
+// MARK: - Streaming Indicators
 
-struct SpinnerView: View {
-    @State private var isAnimating = false
+struct PulsingDotView: View {
+    @State private var pulsing = false
 
     var body: some View {
         Circle()
-            .trim(from: 0, to: 0.7)
-            .stroke(
-                AngularGradient(
-                    gradient: Gradient(colors: [.white.opacity(0), .white]),
-                    center: .center,
-                    startAngle: .degrees(0),
-                    endAngle: .degrees(252)
-                ),
-                style: StrokeStyle(lineWidth: 2, lineCap: .round)
-            )
-            .frame(width: 14, height: 14)
-            .rotationEffect(.degrees(isAnimating ? 360 : 0))
-            .animation(.linear(duration: 0.9).repeatForever(autoreverses: false), value: isAnimating)
-            .onAppear { isAnimating = true }
+            .fill(Color.accentColor)
+            .frame(width: 6, height: 6)
+            .scaleEffect(pulsing ? 1.2 : 0.8)
+            .opacity(pulsing ? 1 : 0.4)
+            .animation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true), value: pulsing)
+            .onAppear { pulsing = true }
     }
+}
+
+struct StreamingCursorView: View {
+    @State private var visible = true
+
+    var body: some View {
+        Text("|")
+            .font(.system(size: 15.5, weight: .medium))
+            .foregroundStyle(Color.accentColor)
+            .opacity(visible ? 1 : 0.3)
+            .animation(.easeInOut(duration: 0.6).repeatForever(autoreverses: true), value: visible)
+            .onAppear { visible = false }
+    }
+}
+
+// Keep old name for any other references
+struct SpinnerView: View {
+    var body: some View {
+        PulsingDotView()
+    }
+}
+
+// MARK: - Preview
+
+#Preview("Assistant Markdown") {
+    let sampleMarkdown = """
+    # Heading 1 — Main Title
+
+    This is a paragraph with **bold text**, some `inline code`, and a [link](https://example.com). The assistant uses SF Pro Text for a polished reading experience.
+
+    ## Heading 2 — Subsection
+
+    Here's a blockquote with a callout:
+
+    > This is an important note. Pay attention to how blockquotes render with the accent bar and italic styling.
+
+    ### Heading 3 — Details
+
+    **Bullet list:**
+
+    - First item in the list
+    - Second item with `code reference`
+    - Third item with **bold emphasis**
+    ---
+    **Numbered steps:**
+
+    1. Clone the repository
+    2. Run `swift build` in the terminal
+    3. Open the project in Xcode
+    ---
+    **Task list:**
+
+    - [x] Design the markdown theme
+    - [x] Implement code blocks
+    - [ ] Add syntax highlighting
+
+    ---
+
+    #### Heading 4 — Comparison Table
+
+    | Feature | Before | After |
+    |---------|--------|-------|
+    | Font | System default | SF Pro Text |
+    | Spacing | Tight | Generous |
+    | Code blocks | Basic | Editor-style |
+
+    ##### Heading 5 — Small Heading
+
+    ###### Heading 6 — Smallest Heading
+
+    ```swift
+    struct ContentView: View {
+        var body: some View {
+            Text("Hello, world!")
+                .font(.title)
+                .padding()
+        }
+    }
+    ```
+
+    And here's a final paragraph after the code block to show spacing between segments.
+    """
+
+    ScrollView {
+        MessageRowView(
+            message: ChatMessage(role: "assistant", content: sampleMarkdown)
+        )
+        .padding(32)
+    }
+    .frame(width: 700, height: 900)
+    .preferredColorScheme(.dark)
 }
