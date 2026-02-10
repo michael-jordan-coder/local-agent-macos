@@ -3,6 +3,9 @@ import SwiftUI
 struct SettingsView: View {
     @AppStorage("selectedModel") private var selectedModel: String = "llama3"
     @State private var availableModels: [OllamaModel] = []
+    var chatVM: ChatViewModel?
+
+    @State private var showDeleteAllConfirmation = false
 
     var body: some View {
         Form {
@@ -22,6 +25,29 @@ struct SettingsView: View {
                     availableModels = try await OllamaClient().fetchModels()
                 } catch {
                     print("Failed to fetch models: \(error)")
+                }
+            }
+
+            Section("Data") {
+                Button(role: .destructive) {
+                    showDeleteAllConfirmation = true
+                } label: {
+                    HStack {
+                        Image(systemName: "trash")
+                        Text("Delete All Conversations")
+                    }
+                }
+                .confirmationDialog(
+                    "Delete All Conversations?",
+                    isPresented: $showDeleteAllConfirmation,
+                    titleVisibility: .visible
+                ) {
+                    Button("Delete All", role: .destructive) {
+                        chatVM?.deleteAllConversations()
+                    }
+                    Button("Cancel", role: .cancel) { }
+                } message: {
+                    Text("This will permanently delete all conversations. This action cannot be undone.")
                 }
             }
 
@@ -47,7 +73,7 @@ struct SettingsView: View {
             }
         }
         .formStyle(.grouped)
-        .frame(width: 400, height: 250)
+        .frame(width: 400, height: 300)
     }
 }
 

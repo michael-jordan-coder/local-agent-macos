@@ -49,7 +49,7 @@ struct LocalAssistantApp: App {
         }
 
         Settings {
-            SettingsView()
+            SettingsView(chatVM: chatVM)
                 .preferredColorScheme(.dark)
         }
     }

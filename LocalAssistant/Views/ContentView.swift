@@ -44,19 +44,18 @@ struct ContentView: View {
     @ViewBuilder
     private var sidebarContent: some View {
         VStack(spacing: 0) {
-            // Tab toggle
-            Picker("", selection: $sidebarTab) {
-                Label("Chats", systemImage: "bubble.left.and.bubble.right")
-                    .tag(SidebarTab.chats)
-                Label("Prompts", systemImage: "doc.text")
-                    .tag(SidebarTab.prompts)
-            }
-            .pickerStyle(.segmented)
-            .labelsHidden()
-            
-            .padding(.vertical, 8)
+            // — New Chat / New Prompt CTA —
+            sidebarCTA
+                .padding(.horizontal, 12)
+                .padding(.top, 12)
+                .padding(.bottom, 8)
 
-            // Tab content
+            // — Tab Switcher —
+            sidebarTabPicker
+                .padding(.horizontal, 12)
+                .padding(.bottom, 6)
+
+            // — Tab Body —
             switch sidebarTab {
             case .chats:
                 chatsSidebar
@@ -64,22 +63,72 @@ struct ContentView: View {
                 promptsSidebar
             }
         }
-        .navigationSplitViewColumnWidth(min: 220, ideal: 260)
-        .toolbar {
-            ToolbarItem {
-                if sidebarTab == .chats {
-                    Button { chatVM.newConversation() } label: {
-                        Image(systemName: "square.and.pencil")
-                    }
-                    .help("New Conversation")
-                } else {
-                    Button {
-                        savedPromptsVM.addPrompt(title: "Untitled Prompt", content: "")
-                    } label: {
-                        Image(systemName: "plus")
-                    }
-                    .help("New Prompt")
+        .navigationSplitViewColumnWidth(min: 240, ideal: 280)
+        .alert("Rename Conversation", isPresented: showRenameBinding) {
+            TextField("Name", text: $renameText)
+            Button("Rename") {
+                if let id = renamingConversationID {
+                    chatVM.renameConversation(id: id, to: renameText)
                 }
+            }
+            .keyboardShortcut(.defaultAction)
+            Button("Cancel", role: .cancel) { }
+        }
+    }
+
+    // MARK: - Sidebar CTA Button
+
+    @State private var isNewChatHovered = false
+
+    private var sidebarCTA: some View {
+        Button {
+            if sidebarTab == .chats {
+                chatVM.newConversation()
+            } else {
+                savedPromptsVM.addPrompt(title: "Untitled Prompt", content: "")
+            }
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: sidebarTab == .chats ? "plus.message" : "plus")
+                    .font(.system(size: 12, weight: .medium))
+                Text(sidebarTab == .chats ? "New Chat" : "New Prompt")
+                    .font(.system(size: 13, weight: .medium))
+                Spacer()
+            }
+            .foregroundStyle(.primary)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 7)
+            .frame(maxWidth: .infinity)
+            .background(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(isNewChatHovered ? Color.primary.opacity(0.08) : Color.clear)
+            )
+            .contentShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .onHover { isNewChatHovered = $0 }
+        .animation(.easeInOut(duration: 0.15), value: isNewChatHovered)
+    }
+
+    // MARK: - Tab Picker
+
+    private var sidebarTabPicker: some View {
+        HStack(spacing: 16) {
+            ForEach(SidebarTab.allCases, id: \.self) { tab in
+                let isActive = sidebarTab == tab
+                Button {
+                    withAnimation(.easeInOut(duration: 0.15)) {
+                        sidebarTab = tab
+                    }
+                } label: {
+                    Text(tab == .chats ? "Chats" : "Prompts")
+                        .font(.system(size: 12, weight: isActive ? .semibold : .regular))
+                        .foregroundStyle(isActive ? .primary : .tertiary)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 6)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
             }
         }
     }
@@ -104,47 +153,52 @@ struct ContentView: View {
     private var chatsSidebar: some View {
         List(selection: $chatVM.selectedConversationID) {
             if !pinnedConversations.isEmpty {
-                Section("Pinned") {
+                Section {
                     ForEach(pinnedConversations) { conv in
-                        sidebarRow(conv)
+                        conversationRow(conv)
                     }
+                } header: {
+                    sectionHeader("Pinned", icon: "pin.fill")
                 }
             }
 
             ForEach(groupedSections, id: \.name) { section in
-                Section(section.name) {
+                Section {
                     ForEach(section.conversations) { conv in
-                        sidebarRow(conv)
+                        conversationRow(conv)
                     }
+                } header: {
+                    sectionHeader(section.name)
                 }
             }
         }
-        .safeAreaInset(edge: .bottom) {
-            VStack(spacing: 0) {
-                Divider()
-                SettingsLink {
-                    Label("Settings", systemImage: "gear")
-                }
-                .buttonStyle(.plain)
-                .padding(8)
-                .frame(maxWidth: .infinity, alignment: .leading)
-            }
-            .background(.regularMaterial)
-        }
+        .listStyle(.sidebar)
+        .scrollContentBackground(.hidden)
         .searchable(
             text: $searchText,
             placement: .sidebar,
             prompt: "Search conversations"
         )
-        .alert("Rename Conversation", isPresented: showRenameBinding) {
-            TextField("Name", text: $renameText)
-            Button("Rename") {
-                if let id = renamingConversationID {
-                    chatVM.renameConversation(id: id, to: renameText)
+        .overlay {
+            if filteredConversations.isEmpty && !searchText.isEmpty {
+                ContentUnavailableView.search(text: searchText)
+            } else if chatVM.conversations.isEmpty {
+                VStack(spacing: 12) {
+                    Image(systemName: "bubble.left.and.text.bubble.right")
+                        .font(.system(size: 36, weight: .ultraLight))
+                        .foregroundStyle(.quaternary)
+                    Text("No conversations yet")
+                        .font(.subheadline)
+                        .foregroundStyle(.tertiary)
+                    Text("Tap \"New Chat\" to get started")
+                        .font(.caption)
+                        .foregroundStyle(.quaternary)
                 }
+                .padding()
             }
-            .keyboardShortcut(.defaultAction)
-            Button("Cancel", role: .cancel) { }
+        }
+        .safeAreaInset(edge: .bottom) {
+            sidebarBottomBar
         }
     }
 
@@ -153,28 +207,39 @@ struct ContentView: View {
     private var promptsSidebar: some View {
         SavedPromptsListView(promptsVM: savedPromptsVM)
             .safeAreaInset(edge: .bottom) {
-                VStack(spacing: 0) {
-                    Divider()
-                    SettingsLink {
-                        Label("Settings", systemImage: "gear")
-                    }
-                    .buttonStyle(.plain)
-                    .padding(8)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                }
-                .background(.regularMaterial)
+                sidebarBottomBar
             }
     }
 
-    // MARK: - Sidebar Row
+    // MARK: - Section Header
 
-    private func sidebarRow(_ conv: Conversation) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
+    private func sectionHeader(_ title: String, icon: String? = nil) -> some View {
+        HStack(spacing: 4) {
+            if let icon {
+                Image(systemName: icon)
+                    .font(.system(size: 9, weight: .semibold))
+                    .foregroundStyle(.tertiary)
+            }
+            Text(title.uppercased())
+                .font(.system(size: 10, weight: .semibold, design: .rounded))
+                .foregroundStyle(.tertiary)
+                .tracking(0.8)
+        }
+        .padding(.top, 6)
+    }
+
+    // MARK: - Conversation Row
+
+    private func conversationRow(_ conv: Conversation) -> some View {
+        HStack {
             Text(conv.title)
+                .font(.system(size: 13, weight: .medium))
                 .lineLimit(1)
 
+            Spacer(minLength: 0)
+
             Text(conv.lastActiveDate, format: .relative(presentation: .named))
-                .font(.caption)
+                .font(.system(size: 11))
                 .foregroundStyle(.tertiary)
                 .lineLimit(1)
         }
@@ -200,6 +265,16 @@ struct ContentView: View {
                 Label("Rename", systemImage: "pencil")
             }
 
+            if let content = conv.systemPrompt, !content.isEmpty {
+                Button {
+                    // Select and open inspector to show system prompt
+                    chatVM.selectedConversationID = conv.id
+                    showInspector = true
+                } label: {
+                    Label("View System Prompt", systemImage: "doc.text")
+                }
+            }
+
             Divider()
 
             Button(role: .destructive) {
@@ -208,6 +283,58 @@ struct ContentView: View {
                 Label("Delete", systemImage: "trash")
             }
         }
+    }
+
+    // MARK: - Bottom Bar
+
+    private var sidebarBottomBar: some View {
+        VStack(spacing: 0) {
+            Divider()
+                .opacity(0.5)
+
+            HStack(spacing: 0) {
+                SettingsLink {
+                    HStack(spacing: 6) {
+                        Image(systemName: "gearshape")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundStyle(.secondary)
+                        Text("Settings")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 8)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+
+                Spacer()
+
+                // Model badge
+                modelBadge
+                    .padding(.trailing, 10)
+            }
+            .frame(height: 36)
+        }
+        .background(.ultraThinMaterial)
+    }
+
+    @AppStorage("selectedModel") private var selectedModel: String = "llama3"
+
+    private var modelBadge: some View {
+        Text(selectedModel)
+            .font(.system(size: 9, weight: .semibold, design: .monospaced))
+            .foregroundStyle(Color(red: 0.55, green: 0.75, blue: 0.95))
+            .padding(.horizontal, 7)
+            .padding(.vertical, 3)
+            .background(
+                Capsule()
+                    .fill(Color(red: 0.25, green: 0.45, blue: 0.80).opacity(0.15))
+            )
+            .overlay(
+                Capsule()
+                    .strokeBorder(Color(red: 0.35, green: 0.50, blue: 0.85).opacity(0.25), lineWidth: 0.5)
+            )
     }
 
     // MARK: - Date Sections
@@ -269,7 +396,7 @@ struct ContentView: View {
     @ViewBuilder
     private var detailContent: some View {
         if sidebarTab == .prompts {
-            SavedPromptEditorView(promptsVM: savedPromptsVM) { promptContent in
+            PromptLibraryView(promptsVM: savedPromptsVM) { promptContent in
                 chatVM.applySystemPrompt(promptContent)
                 sidebarTab = .chats
             }

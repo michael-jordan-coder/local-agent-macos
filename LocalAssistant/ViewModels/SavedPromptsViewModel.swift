@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import Observation
 import os
@@ -21,9 +22,7 @@ final class SavedPromptsViewModel {
     var sortedPrompts: [SavedPrompt] {
         prompts.sorted { lhs, rhs in
             if lhs.isPinned != rhs.isPinned { return lhs.isPinned }
-            let lDate = lhs.lastUsedAt ?? lhs.createdAt
-            let rDate = rhs.lastUsedAt ?? rhs.createdAt
-            return lDate > rDate
+            return lhs.updatedAt > rhs.updatedAt
         }
     }
 
@@ -52,6 +51,7 @@ final class SavedPromptsViewModel {
         guard let idx = prompts.firstIndex(where: { $0.id == id }) else { return }
         prompts[idx].title = title
         prompts[idx].content = content
+        prompts[idx].updatedAt = .now
         persistence.save(prompts[idx])
         log.info("Updated saved prompt: \(id)")
     }
@@ -76,5 +76,12 @@ final class SavedPromptsViewModel {
         guard let idx = prompts.firstIndex(where: { $0.id == id }) else { return }
         prompts[idx].lastUsedAt = .now
         persistence.save(prompts[idx])
+    }
+
+    func copyToClipboard(id: UUID) {
+        guard let prompt = prompts.first(where: { $0.id == id }) else { return }
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(prompt.content, forType: .string)
+        log.info("Copied prompt to clipboard: \(id)")
     }
 }

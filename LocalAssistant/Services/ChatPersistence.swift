@@ -48,6 +48,13 @@ struct ChatPersistence {
         try? FileManager.default.removeItem(at: url)
     }
 
+    func deleteAll() {
+        guard let files = try? FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil) else { return }
+        for file in files where file.pathExtension == "json" {
+            try? FileManager.default.removeItem(at: file)
+        }
+    }
+
     // MARK: - Migration
 
     private func migrateOldFormatIfNeeded(base: URL) {

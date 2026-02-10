@@ -96,6 +96,13 @@ final class ChatViewModel {
         }
     }
 
+    func deleteAllConversations() {
+        log.info("Deleting all \(self.conversations.count) conversations")
+        conversations.removeAll()
+        chatPersistence.deleteAll()
+        selectedConversationID = nil
+    }
+
     func renameConversation(id: UUID, to newTitle: String) {
         let trimmed = newTitle.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty, let idx = index(for: id) else { return }
