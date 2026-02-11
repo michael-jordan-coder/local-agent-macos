@@ -19,9 +19,15 @@ struct ChatPersistence {
     init() {
         let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("LocalAssistant")
-        directory = base.appendingPathComponent("conversations")
-        try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let conversationsDir = base.appendingPathComponent("conversations")
+        directory = conversationsDir
+        try? FileManager.default.createDirectory(at: conversationsDir, withIntermediateDirectories: true)
         migrateOldFormatIfNeeded(base: base)
+    }
+
+    init(directory: URL) {
+        self.directory = directory
+        try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
     }
 
     func loadAll() -> [Conversation] {

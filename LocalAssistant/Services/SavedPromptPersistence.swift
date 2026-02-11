@@ -23,6 +23,11 @@ struct SavedPromptPersistence {
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
     }
 
+    init(directory: URL) {
+        self.directory = directory
+        try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    }
+
     func loadAll() -> [SavedPrompt] {
         guard let files = try? FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil) else {
             return []

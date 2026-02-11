@@ -145,3 +145,21 @@ struct PromptCardView: View {
         }
     }
 }
+
+#Preview("PromptCardView") {
+    let prompt = SavedPrompt(
+        title: "Code Review Lens",
+        content: "Focus on bugs, regressions, and missing tests before discussing style refinements.",
+        isPinned: true
+    )
+    return PromptCardView(
+        prompt: prompt,
+        onCopy: {},
+        onEdit: {},
+        onDelete: {},
+        onApply: {}
+    )
+    .frame(width: 320, height: 180)
+    .padding()
+    .background(Color.black)
+}

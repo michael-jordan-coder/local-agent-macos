@@ -13,6 +13,13 @@ struct SummarizationService {
         self.ollamaClient = ollamaClient
     }
 
+    init(ollamaClient: OllamaClient, fileURL: URL) {
+        let dir = fileURL.deletingLastPathComponent()
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        self.fileURL = fileURL
+        self.ollamaClient = ollamaClient
+    }
+
     func loadSummary() -> String {
         (try? String(contentsOf: fileURL, encoding: .utf8)) ?? ""
     }

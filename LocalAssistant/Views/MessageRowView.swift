@@ -7,11 +7,42 @@ struct MessageRowView: View {
     var isPickingMention: Bool = false
     var onPickMention: ((ChatMessage) -> Void)?
 
+    @State private var assistantSegments: [ContentSegment]
+    @State private var decodedUserImages: [NSImage]
+
+    @State private var rowHover = false
+    @State private var copied = false
+    @State private var pickHover = false
+
+    init(
+        message: ChatMessage,
+        isStreaming: Bool = false,
+        isPickingMention: Bool = false,
+        onPickMention: ((ChatMessage) -> Void)? = nil
+    ) {
+        self.message = message
+        self.isStreaming = isStreaming
+        self.isPickingMention = isPickingMention
+        self.onPickMention = onPickMention
+        _assistantSegments = State(initialValue: message.role == "assistant" ? Self.parseContent(message.content) : [])
+        _decodedUserImages = State(initialValue: message.role == "user" ? Self.decodeImages(message.images) : [])
+    }
+
     var body: some View {
-        switch message.role {
-        case "user": userRow
-        case "assistant": assistantRow
-        default: systemRow
+        Group {
+            switch message.role {
+            case "user": userRow
+            case "assistant": assistantRow
+            default: systemRow
+            }
+        }
+        .onChange(of: message.content) {
+            guard message.role == "assistant" else { return }
+            assistantSegments = Self.parseContent(message.content)
+        }
+        .onChange(of: userImageSignature) {
+            guard message.role == "user" else { return }
+            decodedUserImages = Self.decodeImages(message.images)
         }
     }
 
@@ -39,15 +70,13 @@ struct MessageRowView: View {
                     )
                 }
 
-                if let images = message.images, !images.isEmpty {
-                    ForEach(Array(images.enumerated()), id: \.offset) { _, data in
-                        if let nsImage = NSImage(data: data) {
-                            Image(nsImage: nsImage)
-                                .resizable()
-                                .scaledToFit()
-                                .frame(maxWidth: 300, maxHeight: 300)
-                                .clipShape(RoundedRectangle(cornerRadius: 12))
-                        }
+                if !decodedUserImages.isEmpty {
+                    ForEach(decodedUserImages.indices, id: \.self) { index in
+                        Image(nsImage: decodedUserImages[index])
+                            .resizable()
+                            .scaledToFit()
+                            .frame(maxWidth: 300, maxHeight: 300)
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
                     }
                 }
 
@@ -64,13 +93,9 @@ struct MessageRowView: View {
 
     // MARK: - Assistant (left-aligned, hover actions)
 
-    @State private var rowHover = false
-    @State private var copied = false
-    @State private var pickHover = false
-
     private var assistantRow: some View {
         VStack(alignment: .leading, spacing: 16) {
-            let segments = Self.parseContent(message.content)
+            let segments = assistantSegments
 
             ForEach(segments) { segment in
                 switch segment.kind {
@@ -191,6 +216,10 @@ struct MessageRowView: View {
     }
 
     static func parseContent(_ content: String) -> [ContentSegment] {
+        if !content.contains("```") {
+            return [.init(id: 0, kind: .text(content))]
+        }
+
         var segments: [ContentSegment] = []
         var remaining = content[content.startIndex...]
         var idx = 0
@@ -232,6 +261,18 @@ struct MessageRowView: View {
         }
 
         return segments
+    }
+
+    private static func decodeImages(_ images: [Data]?) -> [NSImage] {
+        guard let images, !images.isEmpty else { return [] }
+        return images.compactMap(NSImage.init(data:))
+    }
+
+    private var userImageSignature: Int {
+        guard let images = message.images else { return 0 }
+        return images.reduce(into: images.count) { partial, data in
+            partial = partial &* 31 &+ data.count
+        }
     }
 }
 

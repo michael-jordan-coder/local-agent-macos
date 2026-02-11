@@ -19,6 +19,17 @@ final class SavedPromptsViewModel {
         log.info("Init: loaded \(self.prompts.count) saved prompts")
     }
 
+#if DEBUG
+    init(previewPrompts: [SavedPrompt], selectedPromptID: UUID? = nil) {
+        self.persistence = SavedPromptPersistence(
+            directory: URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
+                .appendingPathComponent("SavedPromptsPreview-\(UUID().uuidString)", isDirectory: true)
+        )
+        self.prompts = previewPrompts
+        self.selectedPromptID = selectedPromptID ?? previewPrompts.first?.id
+    }
+#endif
+
     var sortedPrompts: [SavedPrompt] {
         prompts.sorted { lhs, rhs in
             if lhs.isPinned != rhs.isPinned { return lhs.isPinned }

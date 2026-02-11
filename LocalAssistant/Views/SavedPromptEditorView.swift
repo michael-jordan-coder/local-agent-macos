@@ -142,3 +142,26 @@ struct SavedPromptEditorView: View {
         }
     }
 }
+
+#Preview("SavedPromptEditorView") {
+    let promptsVM = makeSavedPromptEditorPreviewVM()
+    return SavedPromptEditorView(promptsVM: promptsVM) { _ in }
+        .frame(width: 760, height: 560)
+}
+
+private func makeSavedPromptEditorPreviewVM() -> SavedPromptsViewModel {
+    let root = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
+        .appendingPathComponent("SavedPromptEditorPreview", isDirectory: true)
+    let promptsVM = SavedPromptsViewModel(
+        persistence: SavedPromptPersistence(directory: root)
+    )
+    promptsVM.addPrompt(
+        title: "Production Assistant",
+        content: "Answer with concise implementation steps, and include assumptions explicitly."
+    )
+    promptsVM.addPrompt(
+        title: "Debug Coach",
+        content: "Prioritize reproducible checks, likely root causes, and smallest safe fix first."
+    )
+    return promptsVM
+}

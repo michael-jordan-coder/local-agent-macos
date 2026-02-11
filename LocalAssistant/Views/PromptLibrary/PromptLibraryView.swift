@@ -188,3 +188,37 @@ struct PromptLibraryView: View {
         )
     }
 }
+
+#Preview("PromptLibraryView") {
+    let promptsVM = makePromptLibraryPreviewVM()
+    return NavigationStack {
+        PromptLibraryView(promptsVM: promptsVM) { _ in }
+    }
+    .frame(width: 1000, height: 700)
+}
+
+private func makePromptLibraryPreviewVM() -> SavedPromptsViewModel {
+    let root = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
+        .appendingPathComponent("PromptLibraryPreview", isDirectory: true)
+    let promptsVM = SavedPromptsViewModel(
+        persistence: SavedPromptPersistence(directory: root)
+    )
+    promptsVM.addPrompt(
+        title: "Sprint Planner",
+        content: "Turn requirements into a milestone plan with concrete deliverables and risks."
+    )
+    let firstID = promptsVM.selectedPromptID
+    promptsVM.addPrompt(
+        title: "Refactor Guide",
+        content: "Propose safe incremental refactors with test checkpoints."
+    )
+    promptsVM.addPrompt(
+        title: "Incident Summary",
+        content: "Summarize incident timeline, impact, root cause, and follow-up actions."
+    )
+    if let firstID {
+        promptsVM.togglePin(id: firstID)
+    }
+    promptsVM.selectedPromptID = nil
+    return promptsVM
+}

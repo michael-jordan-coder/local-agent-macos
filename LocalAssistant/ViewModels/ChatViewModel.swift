@@ -75,6 +75,27 @@ final class ChatViewModel {
         log.info("Init: loaded \(self.conversations.count) conversations")
     }
 
+#if DEBUG
+    init(previewConversations: [Conversation], selectedConversationID: UUID? = nil) {
+        let previewRoot = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
+            .appendingPathComponent("ChatPreview-\(UUID().uuidString)", isDirectory: true)
+        let previewClient = OllamaClient()
+        let previewPersistence = ChatPersistence(directory: previewRoot.appendingPathComponent("conversations", isDirectory: true))
+        let previewSummarization = SummarizationService(
+            ollamaClient: previewClient,
+            fileURL: previewRoot.appendingPathComponent("summary.txt")
+        )
+        let previewSummaryVM = SummaryViewModel(service: previewSummarization)
+
+        self.ollamaClient = previewClient
+        self.chatPersistence = previewPersistence
+        self.summarizationService = previewSummarization
+        self.summaryViewModel = previewSummaryVM
+        self.conversations = previewConversations
+        self.selectedConversationID = selectedConversationID ?? previewConversations.first?.id
+    }
+#endif
+
     private var currentTask: Task<Void, Never>?
 
     // MARK: - Conversation management

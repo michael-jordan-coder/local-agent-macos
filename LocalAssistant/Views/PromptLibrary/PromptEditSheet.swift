@@ -115,3 +115,15 @@ struct PromptEditSheet: View {
         }
     }
 }
+
+#Preview("PromptEditSheet") {
+    return PromptEditSheet(
+        prompt: SavedPrompt(
+            title: "Prompt Title",
+            content: "Provide concise, production-focused guidance with explicit assumptions."
+        ),
+        onSave: { _, _ in },
+        onCancel: {}
+    )
+    .frame(width: 560, height: 440)
+}

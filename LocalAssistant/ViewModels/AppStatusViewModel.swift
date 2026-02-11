@@ -19,6 +19,13 @@ final class AppStatusViewModel {
         self.client = client
     }
 
+#if DEBUG
+    init(previewStatus: Status) {
+        self.client = OllamaClient()
+        self.status = previewStatus
+    }
+#endif
+
     func ensureRunning() async {
         status = .checking
 

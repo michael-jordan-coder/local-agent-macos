@@ -91,3 +91,30 @@ struct SavedPromptsListView: View {
         }
     }
 }
+
+#Preview("SavedPromptsListView") {
+    let promptsVM = makeSavedPromptsListPreviewVM()
+    return SavedPromptsListView(promptsVM: promptsVM)
+        .frame(width: 320, height: 520)
+}
+
+private func makeSavedPromptsListPreviewVM() -> SavedPromptsViewModel {
+    let root = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
+        .appendingPathComponent("SavedPromptsListPreview", isDirectory: true)
+    let promptsVM = SavedPromptsViewModel(
+        persistence: SavedPromptPersistence(directory: root)
+    )
+    promptsVM.addPrompt(
+        title: "Senior Swift Reviewer",
+        content: "Review changes for regressions, edge cases, and missing tests."
+    )
+    promptsVM.addPrompt(
+        title: "API Planner",
+        content: "Design API contracts with explicit request/response examples and error cases."
+    )
+    if let firstID = promptsVM.prompts.first?.id {
+        promptsVM.togglePin(id: firstID)
+    }
+    promptsVM.selectedPromptID = nil
+    return promptsVM
+}

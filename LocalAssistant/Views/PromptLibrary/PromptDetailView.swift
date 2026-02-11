@@ -271,3 +271,32 @@ struct PromptDetailView: View {
         }
     }
 }
+
+#Preview("PromptDetailView") {
+    let data = makePromptDetailPreviewData()
+    return PromptDetailView(
+        promptsVM: data.promptsVM,
+        promptID: data.promptID,
+        onApply: { _ in },
+        onBack: {}
+    )
+    .frame(width: 900, height: 640)
+}
+
+private func makePromptDetailPreviewData() -> (promptsVM: SavedPromptsViewModel, promptID: UUID) {
+    let root = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
+        .appendingPathComponent("PromptDetailPreview", isDirectory: true)
+    let promptsVM = SavedPromptsViewModel(
+        persistence: SavedPromptPersistence(directory: root)
+    )
+    promptsVM.addPrompt(
+        title: "Architecture Reviewer",
+        content: "Prefer clear tradeoffs and concrete migration plans over generic recommendations."
+    )
+    let promptID = promptsVM.selectedPromptID ?? UUID()
+    promptsVM.addPrompt(
+        title: "Testing Assistant",
+        content: "Generate practical tests focused on behavior and edge cases."
+    )
+    return (promptsVM, promptID)
+}
