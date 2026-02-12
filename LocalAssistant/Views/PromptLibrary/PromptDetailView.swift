@@ -37,7 +37,7 @@ struct PromptDetailView: View {
                 Text("This prompt may have been deleted.")
             } actions: {
                 Button("Back to Library") { onBack() }
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(.glassProminent)
             }
         }
     }
@@ -194,7 +194,7 @@ struct PromptDetailView: View {
             } label: {
                 Label("Delete", systemImage: "trash")
             }
-            .buttonStyle(.bordered)
+            .buttonStyle(.glass)
             .controlSize(.large)
 
             Spacer()
@@ -207,7 +207,7 @@ struct PromptDetailView: View {
             } label: {
                 Label("Apply to Conversation", systemImage: "play.fill")
             }
-            .buttonStyle(.bordered)
+            .buttonStyle(.glass)
             .controlSize(.large)
             .disabled(draftContent.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
 
@@ -225,7 +225,7 @@ struct PromptDetailView: View {
                         .contentTransition(.interpolate)
                 }
             }
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(.glassProminent)
             .controlSize(.large)
             .disabled(saveState != .dirty)
             .keyboardShortcut("s", modifiers: .command)

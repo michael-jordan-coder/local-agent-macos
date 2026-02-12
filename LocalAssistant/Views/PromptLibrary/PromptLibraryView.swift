@@ -171,7 +171,7 @@ struct PromptLibraryView: View {
             Button("New Prompt") {
                 showNewSheet = true
             }
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(.glassProminent)
         }
     }
 

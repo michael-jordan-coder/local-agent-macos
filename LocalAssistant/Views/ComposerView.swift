@@ -1,9 +1,17 @@
 import SwiftUI
 import UniformTypeIdentifiers
 
+private struct WidthKey: PreferenceKey {
+    static var defaultValue: CGFloat { 600 }
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
+    }
+}
+
 struct ComposerView: View {
     @Bindable var chatVM: ChatViewModel
     @State private var isImporting = false
+    @State private var containerWidth: CGFloat = 600
 
     var body: some View {
         VStack(spacing: 8) {
@@ -211,7 +219,23 @@ struct ComposerView: View {
             )
         }
         .padding(.vertical, 16)
-        .padding(.horizontal)
+        .padding(.horizontal, paddingFor(width: containerWidth))
+        .background(
+            GeometryReader { geometry in
+                Color.clear.preference(key: WidthKey.self, value: geometry.size.width)
+            }
+        )
+        .onPreferenceChange(WidthKey.self) { containerWidth = $0 }
+    }
+
+    private func paddingFor(width: CGFloat) -> CGFloat {
+        if width < 600 {
+            return 16
+        } else if width < 900 {
+            return 32
+        } else {
+            return 64
+        }
     }
 
     private var canSend: Bool {

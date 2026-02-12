@@ -95,7 +95,7 @@ struct PromptEditSheet: View {
                     let finalTitle = title.isEmpty ? "Untitled" : title
                     onSave(finalTitle, content)
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(.glassProminent)
                 .controlSize(.large)
                 .disabled(draftContent.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }

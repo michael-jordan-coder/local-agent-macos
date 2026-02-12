@@ -8,10 +8,6 @@ struct SystemPromptPanelView: View {
     @State private var applyState: ApplyState = .clean
     @State private var showSaveToLibrary = false
     @State private var saveTitle = ""
-    @State private var isCloseHovered = false
-    @State private var isSaveHovered = false
-    @State private var isResetHovered = false
-    @State private var isRevertHovered = false
     @FocusState private var editorFocused: Bool
 
     private let placeholderText = "Custom instructions that shape how the assistant responds in this conversation..."
@@ -36,12 +32,9 @@ struct SystemPromptPanelView: View {
 
             Divider()
                 .opacity(0.5)
-
-            footer
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color.primary.opacity(0.015))
-        .ignoresSafeArea(.container, edges: .top)
+        .background(Color(nsColor: .windowBackgroundColor))
         .onAppear {
             draftPrompt = chatVM.currentSystemPrompt
             applyState = .clean
@@ -82,64 +75,21 @@ struct SystemPromptPanelView: View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 8) {
                 Text("System Prompt")
-                    .font(.headline.weight(.semibold))
+                    .font(.title3)
 
                 statusChip
 
                 Spacer()
-
-                if applyState == .dirty {
-                    Button("Revert") {
-                        draftPrompt = chatVM.currentSystemPrompt
-                        applyState = .clean
-                    }
-                    .buttonStyle(.plain)
-                    .font(.caption.weight(.medium))
-                    .foregroundStyle(.secondary)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
-                    .background(
-                        RoundedRectangle(cornerRadius: 8, style: .continuous)
-                            .fill(isRevertHovered ? Color.primary.opacity(0.08) : Color.clear)
-                    )
-                    .onHover { isRevertHovered = $0 }
-                }
-
-                Button("Apply") {
-                    applyPrompt()
-                }
-                .buttonStyle(.borderedProminent)
-                .disabled(applyState != .dirty)
-                .keyboardShortcut(.return, modifiers: [.command])
-
-                Button {
-                    isPresented = false
-                } label: {
-                    Image(systemName: "xmark")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.secondary)
-                        .frame(width: 28, height: 28)
-                        .background(
-                            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                .fill(isCloseHovered ? Color.primary.opacity(0.08) : Color.clear)
-                        )
-                        .contentShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-                }
-                .buttonStyle(.plain)
-                .keyboardShortcut(.cancelAction)
-                .onHover { isCloseHovered = $0 }
-                .animation(.easeInOut(duration: 0.15), value: isCloseHovered)
-                .help("Close System Prompt")
             }
 
             Text("Applies to this conversation only")
-                .font(.caption)
+                .font(.callout)
                 .foregroundStyle(.secondary)
         }
         .padding(.horizontal, 12)
-        .padding(.top, 10)
-        .padding(.bottom, 10)
-        .background(Color.primary.opacity(0.02))
+        .padding(.top, 12)
+        .padding(.bottom, 12)
+        .background(Color(nsColor: .windowBackgroundColor))
     }
 
     @ViewBuilder
@@ -158,7 +108,7 @@ struct SystemPromptPanelView: View {
 
     private func chip(_ text: String, tint: Color) -> some View {
         Text(text)
-            .font(.caption2.monospaced())
+            .font(.callout)
             .foregroundStyle(tint)
             .padding(.horizontal, 8)
             .padding(.vertical, 4)
@@ -182,10 +132,31 @@ struct SystemPromptPanelView: View {
 
     private var editorSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("SYSTEM INSTRUCTIONS")
-                .font(.caption2.weight(.semibold))
-                .foregroundStyle(.tertiary)
-                .tracking(0.8)
+            HStack(spacing: 8) {
+                Text("System Instructions")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Button("Save to Library") {
+                    saveTitle = ""
+                    showSaveToLibrary = true
+                }
+                .buttonStyle(.glass)
+                .controlSize(.large)
+                .contentShape(Rectangle())
+                .disabled(draftPrompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                Button("Apply") {
+                    applyPrompt()
+                }
+                .buttonStyle(.glassProminent)
+                .controlSize(.large)
+                .contentShape(Rectangle())
+                .disabled(applyState != .dirty)
+                .keyboardShortcut(.return, modifiers: [.command])
+            }
+
+            Divider()
+                .opacity(0.8)
 
             ZStack(alignment: .topLeading) {
                 if draftPrompt.isEmpty {
@@ -204,67 +175,10 @@ struct SystemPromptPanelView: View {
                     .padding(.horizontal, 8)
                     .padding(.vertical, 12)
             }
-            .background(
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .fill(Color.primary.opacity(editorFocused ? 0.07 : 0.045))
-            )
             .animation(.easeInOut(duration: 0.15), value: editorFocused)
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 12)
-    }
-
-    // MARK: - Footer
-
-    private var footer: some View {
-        HStack(spacing: 8) {
-            Button("Reset") {
-                draftPrompt = ""
-                chatVM.resetSystemPrompt()
-                applyState = .clean
-            }
-            .buttonStyle(.plain)
-            .font(.caption.weight(.medium))
-            .foregroundStyle(.secondary)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 6)
-            .background(
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .fill(isResetHovered ? Color.primary.opacity(0.08) : Color.clear)
-            )
-            .contentShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-            .onHover { isResetHovered = $0 }
-            .animation(.easeInOut(duration: 0.15), value: isResetHovered)
-            .disabled(chatVM.currentSystemPrompt.isEmpty && draftPrompt.isEmpty)
-
-            Spacer()
-
-            Button {
-                saveTitle = ""
-                showSaveToLibrary = true
-            } label: {
-                HStack(spacing: 8) {
-                    Image(systemName: "square.and.arrow.down")
-                    Text("Save to Library")
-                }
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 6)
-                .background(
-                    RoundedRectangle(cornerRadius: 8, style: .continuous)
-                        .fill(isSaveHovered ? Color.primary.opacity(0.08) : Color.clear)
-                )
-                .contentShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-            }
-            .buttonStyle(.plain)
-            .onHover { isSaveHovered = $0 }
-            .animation(.easeInOut(duration: 0.15), value: isSaveHovered)
-            .disabled(draftPrompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
-        .background(Color.primary.opacity(0.02))
     }
 
     private func applyPrompt() {

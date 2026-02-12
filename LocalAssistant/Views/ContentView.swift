@@ -13,25 +13,23 @@ struct ContentView: View {
             if let sidebarVM {
                 SidebarView(viewModel: sidebarVM)
             }
-        } detail: {
+        }         detail: {
             detailContent
-                .inspector(isPresented: $showInspector) {
-                    SystemPromptPanelView(chatVM: chatVM, savedPromptsVM: savedPromptsVM, isPresented: $showInspector)
-                        .inspectorColumnWidth(min: 350, ideal: 380, max: 400)
-                }
+        }
+        .inspector(isPresented: $showInspector) {
+            SystemPromptPanelView(chatVM: chatVM, savedPromptsVM: savedPromptsVM, isPresented: $showInspector)
+                .inspectorColumnWidth(min: 350, ideal: 380, max: 400)
         }
         .frame(minWidth: 700, minHeight: 500)
         .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
-                if !showInspector {
-                    Button {
-                        showInspector = true
-                    } label: {
-                        Image(systemName: chatVM.currentSystemPrompt.isEmpty ? "doc.text" : "doc.text.fill")
-                    }
-                    .help("System Prompt")
+                Button {
+                    showInspector.toggle()
+                } label: {
+                    Image(systemName: chatVM.currentSystemPrompt.isEmpty ? "doc.text" : "doc.text.fill")
                 }
+                .help(showInspector ? "Close System Prompt" : "System Prompt")
             }
         }
         .onAppear {
@@ -58,7 +56,9 @@ struct ContentView: View {
             }
         } else {
             VStack(spacing: 0) {
-                StatusBarView(status: statusVM.status)
+                if !statusVM.isReady {
+                    StatusBarView(status: statusVM.status)
+                }
 
                 if !statusVM.isReady {
                     loadingView

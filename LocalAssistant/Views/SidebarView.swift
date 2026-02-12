@@ -18,6 +18,9 @@ struct SidebarView: View {
                 .padding(.top, 12)
                 .padding(.bottom, 12)
 
+            Divider()
+                .opacity(0.5)
+
             switch viewModel.sidebarTab {
             case .chats:
                 chatsSidebar
@@ -25,6 +28,7 @@ struct SidebarView: View {
                 promptsSidebar
             }
         }
+        .background(Color(nsColor: .windowBackgroundColor))
         .navigationSplitViewColumnWidth(min: 240, ideal: 280)
         .toolbar { sidebarToolbar }
         .alert("Rename Conversation", isPresented: showRenameBinding) {
@@ -78,6 +82,7 @@ struct SidebarView: View {
             .pickerStyle(.segmented)
             .labelsHidden()
             .controlSize(.regular)
+            .font(.callout)
             .help("Switch sidebar section")
         }
     }
@@ -154,13 +159,12 @@ struct SidebarView: View {
         HStack(spacing: 4) {
             if let icon {
                 Image(systemName: icon)
-                    .font(.caption2.weight(.semibold))
-                    .foregroundStyle(.tertiary)
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
             }
             Text(title.capitalized)
-                .font(.caption2.weight(.semibold))
-                .foregroundStyle(.tertiary)
-                .tracking(0.8)
+                .font(.callout)
+                .foregroundStyle(.secondary)
         }
         .padding(.top, 8)
         .padding( .bottom, 4)
@@ -255,7 +259,7 @@ struct SidebarView: View {
             }
             .frame(height: 40)
         }
-        .background(.ultraThinMaterial)
+        .background(.ultraThickMaterial)
     }
 
     private var modelBadge: some View {
