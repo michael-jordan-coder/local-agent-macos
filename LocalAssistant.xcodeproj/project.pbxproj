@@ -7,7 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		659070BB2F2DCA5A00FEAD57 /* MarkdownUI in Frameworks */ = {isa = PBXBuildFile; productRef = 65B192512F2AC00100D4C0D7 /* MarkdownUI */; };
+		66C9F0012F9A100100AA0001 /* Markdown in Frameworks */ = {isa = PBXBuildFile; productRef = 66C9F0032F9A100100AA0001 /* Markdown */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -40,7 +40,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				659070BB2F2DCA5A00FEAD57 /* MarkdownUI in Frameworks */,
+				66C9F0012F9A100100AA0001 /* Markdown in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -83,7 +83,7 @@
 			);
 			name = LocalAssistant;
 			packageProductDependencies = (
-				65B192512F2AC00100D4C0D7 /* MarkdownUI */,
+				66C9F0032F9A100100AA0001 /* Markdown */,
 			);
 			productName = LocalAssistant;
 			productReference = 65B192392F2AB91E00D4C0D7 /* LocalAssistant.app */;
@@ -114,7 +114,7 @@
 			mainGroup = 65B192302F2AB91E00D4C0D7;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				65B192502F2AC00000D4C0D7 /* XCRemoteSwiftPackageReference "swift-markdown-ui" */,
+				66C9F0022F9A100100AA0001 /* XCRemoteSwiftPackageReference "swift-markdown" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 65B1923A2F2AB91E00D4C0D7 /* Products */;
@@ -357,21 +357,21 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
-		65B192502F2AC00000D4C0D7 /* XCRemoteSwiftPackageReference "swift-markdown-ui" */ = {
+		66C9F0022F9A100100AA0001 /* XCRemoteSwiftPackageReference "swift-markdown" */ = {
 			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/gonzalezreal/swift-markdown-ui.git";
+			repositoryURL = "https://github.com/swiftlang/swift-markdown.git";
 			requirement = {
 				kind = upToNextMajorVersion;
-				minimumVersion = 2.4.1;
+				minimumVersion = 0.5.0;
 			};
 		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		65B192512F2AC00100D4C0D7 /* MarkdownUI */ = {
+		66C9F0032F9A100100AA0001 /* Markdown */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 65B192502F2AC00000D4C0D7 /* XCRemoteSwiftPackageReference "swift-markdown-ui" */;
-			productName = MarkdownUI;
+			package = 66C9F0022F9A100100AA0001 /* XCRemoteSwiftPackageReference "swift-markdown" */;
+			productName = Markdown;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

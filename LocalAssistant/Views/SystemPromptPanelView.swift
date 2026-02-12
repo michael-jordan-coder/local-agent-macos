@@ -110,16 +110,6 @@ struct SystemPromptPanelView: View {
         Text(text)
             .font(.callout)
             .foregroundStyle(tint)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 4)
-            .background(
-                Capsule()
-                    .fill(tint.opacity(0.12))
-            )
-            .overlay(
-                Capsule()
-                    .strokeBorder(tint.opacity(0.22), lineWidth: 0.5)
-            )
     }
 
     private var promptStatus: PromptStatus {
@@ -161,7 +151,7 @@ struct SystemPromptPanelView: View {
             ZStack(alignment: .topLeading) {
                 if draftPrompt.isEmpty {
                     Text(placeholderText)
-                        .font(.body)
+                        .font(.body.monospaced().weight(.light))
                         .foregroundStyle(.tertiary)
                         .padding(.horizontal, 10)
                         .padding(.vertical, 10)
@@ -170,11 +160,15 @@ struct SystemPromptPanelView: View {
 
                 TextEditor(text: $draftPrompt)
                     .focused($editorFocused)
-                    .font(.body)
+                    .font(.body.monospaced().weight(.light))
                     .scrollContentBackground(.hidden)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 12)
             }
+            .background(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(Color(red: 24/255, green: 24/255, blue: 24/255))
+            )
             .animation(.easeInOut(duration: 0.15), value: editorFocused)
         }
         .padding(.horizontal, 12)

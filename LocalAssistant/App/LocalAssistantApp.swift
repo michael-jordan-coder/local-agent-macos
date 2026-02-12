@@ -57,6 +57,7 @@ struct LocalAssistantApp: App {
     private func styleWindow() {
         DispatchQueue.main.async {
             guard let window = NSApplication.shared.windows.first else { return }
+            window.titleVisibility = .hidden
             window.titlebarAppearsTransparent = true
             window.backgroundColor = NSColor(Color.appWindowBg)
             window.center()
