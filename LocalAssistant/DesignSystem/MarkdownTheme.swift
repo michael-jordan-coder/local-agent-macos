@@ -73,6 +73,7 @@ struct MarkdownTheme {
     var listIndent: CGFloat
     var listItemSpacing: CGFloat
     var codeBlockPadding: EdgeInsets
+    var codeBlockCornerRadius: CGFloat
     var codeCornerRadius: CGFloat
 
     var palette: Palette
@@ -174,7 +175,8 @@ extension MarkdownTheme {
         blockSpacing: 0,
         listIndent: 20,
         listItemSpacing: 8,
-        codeBlockPadding: EdgeInsets(top: 12, leading: 14, bottom: 12, trailing: 14),
+        codeBlockPadding: EdgeInsets(top: 16, leading: 16, bottom: 16, trailing: 16),
+        codeBlockCornerRadius: 12,
         codeCornerRadius: 8,
         palette: .init(
             textPrimary: Color(nsColor: .labelColor),

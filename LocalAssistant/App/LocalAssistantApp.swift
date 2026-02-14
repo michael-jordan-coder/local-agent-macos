@@ -15,13 +15,15 @@ struct LocalAssistantApp: App {
         let chatPersistence = ChatPersistence()
         let summarizationService = SummarizationService(ollamaClient: client)
         let summaryVM = SummaryViewModel(service: summarizationService)
+        let searchService = SearchService()
 
         _statusVM = State(initialValue: AppStatusViewModel(client: client))
         _chatVM = State(initialValue: ChatViewModel(
             ollamaClient: client,
             chatPersistence: chatPersistence,
             summarizationService: summarizationService,
-            summaryViewModel: summaryVM
+            summaryViewModel: summaryVM,
+            searchService: searchService
         ))
         _summaryVM = State(initialValue: summaryVM)
         _savedPromptsVM = State(initialValue: SavedPromptsViewModel())

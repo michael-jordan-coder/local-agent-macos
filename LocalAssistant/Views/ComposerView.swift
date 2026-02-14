@@ -249,14 +249,17 @@ struct ComposerView: View {
     let summarizationService = SummarizationService(ollamaClient: client)
     let summaryVM = SummaryViewModel(service: summarizationService)
 
+    let searchService = SearchService()
+
     let chatVM = ChatViewModel(
         ollamaClient: client,
         chatPersistence: chatPersistence,
         summarizationService: summarizationService,
-        summaryViewModel: summaryVM
+        summaryViewModel: summaryVM,
+        searchService: searchService
     )
 
-    return ZStack {
+    ZStack {
         Color.gray.opacity(0.1).ignoresSafeArea()
         ComposerView(chatVM: chatVM)
             .frame(width: 600)

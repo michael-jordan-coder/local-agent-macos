@@ -169,10 +169,47 @@ struct MessageRowView: View {
     // MARK: - System (dimmed)
 
     private var systemRow: some View {
-        Text(message.content)
-            .font(.body)
-            .foregroundStyle(.secondary)
+        Group {
+            if message.content.hasPrefix("🔍SEARCH_SOURCES:") {
+                searchSourcesView
+            } else if message.content == "🔍SEARCH_SOURCES_EMPTY" {
+                emptySearchView
+            } else {
+                MarkdownView(markdown: message.content, theme: .default)
+                    .font(.body)
+                    .foregroundStyle(.secondary)
+            }
+        }
             .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var searchSourcesView: some View {
+        let sourcesData = message.content.dropFirst("🔍SEARCH_SOURCES:".count)
+        let sources = parseSearchSources(String(sourcesData))
+
+        return SearchSourcesView(sources: sources)
+            .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var emptySearchView: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "magnifyingglass")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Text("No results found")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .padding(10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func parseSearchSources(_ data: String) -> [(domain: String, url: String)] {
+        data.split(separator: ",").compactMap { pair in
+            let parts = pair.split(separator: "|")
+            guard parts.count == 2 else { return nil }
+            return (domain: String(parts[0]), url: String(parts[1]))
+        }
     }
 
     private static func decodeImages(_ images: [Data]?) -> [NSImage] {

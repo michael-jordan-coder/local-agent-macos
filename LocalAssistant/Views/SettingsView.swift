@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct SettingsView: View {
-    @AppStorage("selectedModel") private var selectedModel: String = "llama3"
+    @AppStorage("selectedModel") private var selectedModel: String = "gpt-oss:20b-cloud"
     @State private var availableModels: [OllamaModel] = []
     var chatVM: ChatViewModel?
 

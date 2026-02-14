@@ -66,20 +66,18 @@ private struct MarkdownBlockView: View {
                 }
 
                 ScrollView(.horizontal, showsIndicators: true) {
-                    Text(verbatim: code)
-                        .font(theme.codeBlock.font)
-                        .kerning(theme.codeBlock.kerning)
+                    // Syntax-highlighted code
+                    Text(AttributedString(SyntaxHighlighter.highlight(code, language: language)))
                         .lineSpacing(theme.codeBlock.lineSpacing)
-                        .foregroundStyle(theme.palette.codeText)
                         .textSelection(.enabled)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 .padding(theme.codeBlockPadding)
-                .background(theme.palette.surfaceSubtle)
-                .clipShape(RoundedRectangle(cornerRadius: theme.codeCornerRadius))
+                .background(Color(nsColor: SyntaxHighlighter.codeBlockBackgroundColor))
+                .clipShape(RoundedRectangle(cornerRadius: theme.codeBlockCornerRadius))
                 .overlay(
-                    RoundedRectangle(cornerRadius: theme.codeCornerRadius)
-                        .stroke(theme.palette.borderSubtle, lineWidth: 1)
+                    RoundedRectangle(cornerRadius: theme.codeBlockCornerRadius)
+                        .stroke(Color(nsColor: SyntaxHighlighter.codeBlockBorderColor), lineWidth: 1)
                 )
             }
             .padding(.top, theme.codeBlock.spacingBefore)

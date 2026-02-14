@@ -16,7 +16,7 @@ final class SidebarViewModel {
     var renameText = ""
 
     @ObservationIgnored
-    @AppStorage("selectedModel") var selectedModel: String = "llama3"
+    @AppStorage("selectedModel") var selectedModel: String = "gpt-oss:20b-cloud"
 
     /// Fired when a conversation's "View System Prompt" context action is triggered.
     var onRequestInspector: (() -> Void)?

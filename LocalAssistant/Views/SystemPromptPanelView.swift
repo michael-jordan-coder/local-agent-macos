@@ -206,19 +206,23 @@ struct SystemPromptPanelView: View {
         fileURL: previewRoot.appendingPathComponent("summary.txt")
     )
     let summaryVM = SummaryViewModel(service: summarizationService)
+    let searchService = SearchService()
     let chatVM = ChatViewModel(
         ollamaClient: client,
         chatPersistence: chatPersistence,
         summarizationService: summarizationService,
-        summaryViewModel: summaryVM
+        summaryViewModel: summaryVM,
+        searchService: searchService
     )
-    chatVM.newConversation()
-    chatVM.applySystemPrompt("You are a precise and pragmatic assistant.")
 
     let savedPromptsVM = SavedPromptsViewModel(
         persistence: SavedPromptPersistence(directory: previewRoot.appendingPathComponent("saved-prompts", isDirectory: true))
     )
 
-    return SystemPromptPanelView(chatVM: chatVM, savedPromptsVM: savedPromptsVM, isPresented: $shown)
+    SystemPromptPanelView(chatVM: chatVM, savedPromptsVM: savedPromptsVM, isPresented: $shown)
+        .task {
+            chatVM.newConversation()
+            chatVM.applySystemPrompt("You are a precise and pragmatic assistant.")
+        }
         .frame(width: 340, height: 620)
 }

@@ -59,7 +59,7 @@ final class ModelToolbarSwitcherViewModel {
         catalog: ModelCatalogProviding,
         selectionStore: ModelSelectionStoring,
         persistenceKey: String = "selectedModel",
-        defaultModelName: String = "llama3",
+        defaultModelName: String = "gpt-oss:20b-cloud",
         fixedControlWidth: CGFloat = 220
     ) {
         self.catalog = catalog
@@ -73,7 +73,7 @@ final class ModelToolbarSwitcherViewModel {
 
     convenience init(
         persistenceKey: String = "selectedModel",
-        defaultModelName: String = "llama3",
+        defaultModelName: String = "gpt-oss:20b-cloud",
         fixedControlWidth: CGFloat = 220
     ) {
         self.init(

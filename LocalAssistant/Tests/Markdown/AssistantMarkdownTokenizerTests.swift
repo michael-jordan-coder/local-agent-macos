@@ -1,5 +1,6 @@
 #if canImport(XCTest)
 import XCTest
+@testable import LocalAssistant
 
 final class AssistantMarkdownTokenizerTests: XCTestCase {
     func testProseOnlyReturnsSingleMarkdownSegment() {
@@ -103,6 +104,39 @@ final class AssistantMarkdownTokenizerTests: XCTestCase {
                 .markdown("# AI Assistant Styles\n\n## Overview\nBody."),
             ]
         )
+    }
+
+    func testRendererFencedCodeBlockPreservesLanguageAndCode() {
+        let input = """
+        Intro
+
+        ```swift
+        struct ContentView: View {
+            var body: some View {
+                Text("Hello")
+            }
+        }
+        ```
+
+        Tail
+        """
+
+        let document = MarkdownRenderer.render(markdown: input)
+
+        var language: String?
+        var code = ""
+        for block in document.blocks {
+            if case .codeBlock(let valueLanguage, let valueCode) = block {
+                language = valueLanguage
+                code = valueCode
+                break
+            }
+        }
+
+        XCTAssertEqual(language, "swift")
+        XCTAssertTrue(code.contains("struct ContentView: View {"))
+        XCTAssertTrue(code.contains("Text(\"Hello\")"))
+        XCTAssertFalse(code.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
     }
 }
 #endif

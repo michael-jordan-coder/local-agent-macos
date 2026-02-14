@@ -111,25 +111,29 @@ struct ContentView: View {
         fileURL: previewRoot.appendingPathComponent("summary.txt")
     )
     let summaryVM = SummaryViewModel(service: summarizationService)
+    let searchService = SearchService()
     let chatVM = ChatViewModel(
         ollamaClient: client,
         chatPersistence: chatPersistence,
         summarizationService: summarizationService,
-        summaryViewModel: summaryVM
+        summaryViewModel: summaryVM,
+        searchService: searchService
     )
-    chatVM.newConversation()
-    chatVM.applySystemPrompt("You are a precise and pragmatic assistant.")
 
     let savedPromptsVM = SavedPromptsViewModel(
         persistence: SavedPromptPersistence(directory: previewRoot.appendingPathComponent("saved-prompts", isDirectory: true))
     )
     let statusVM = AppStatusViewModel(previewStatus: .ready)
 
-    return ContentView(
+    ContentView(
         statusVM: statusVM,
         chatVM: chatVM,
         summaryVM: summaryVM,
         savedPromptsVM: savedPromptsVM
     )
+    .task {
+        chatVM.newConversation()
+        chatVM.applySystemPrompt("You are a precise and pragmatic assistant.")
+    }
     .frame(width: 1200, height: 760)
 }

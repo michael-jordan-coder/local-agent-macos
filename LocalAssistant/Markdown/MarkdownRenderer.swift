@@ -141,41 +141,24 @@ enum MarkdownRenderer {
     }
 
     private static func headingLevel(_ heading: Heading) -> Int {
-        (Mirror(reflecting: heading).descendant("level") as? Int) ?? 1
+        max(1, heading.level)
     }
 
     private static func orderedListStart(_ orderedList: OrderedList) -> Int {
-        if let value = Mirror(reflecting: orderedList).descendant("startIndex") as? Int {
-            return value
-        }
-        if let value = Mirror(reflecting: orderedList).descendant("start") as? Int {
-            return value
-        }
-        return 1
+        Int(clamping: orderedList.startIndex)
     }
 
     private static func codeBlockLanguage(_ codeBlock: CodeBlock) -> String? {
-        guard let language = Mirror(reflecting: codeBlock).descendant("language") as? String else {
-            return nil
-        }
+        guard let language = codeBlock.language else { return nil }
         return language.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : language
     }
 
     private static func codeBlockText(_ codeBlock: CodeBlock) -> String {
-        if let code = Mirror(reflecting: codeBlock).descendant("code") as? String {
-            return code
-        }
-        return literalText(from: codeBlock)
+        codeBlock.code
     }
 
     private static func linkDestination(_ link: Link) -> String {
-        if let destination = Mirror(reflecting: link).descendant("destination") as? String {
-            return destination
-        }
-        if let url = Mirror(reflecting: link).descendant("destination") as? URL {
-            return url.absoluteString
-        }
-        return ""
+        link.destination ?? ""
     }
 
     private static func parseTable(from table: some Markup) -> MarkdownTable? {
@@ -253,9 +236,7 @@ enum MarkdownRenderer {
         }
 
         if let codeBlock = node as? CodeBlock {
-            if let code = Mirror(reflecting: codeBlock).descendant("code") as? String {
-                return code
-            }
+            return codeBlock.code
         }
 
         var value = ""

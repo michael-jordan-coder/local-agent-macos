@@ -91,7 +91,8 @@ enum PromptBuilder {
         summary: String,
         recentMessages: [ChatMessage],
         newMessage: String,
-        mentionedContext: String? = nil
+        mentionedContext: String? = nil,
+        searchResults: String? = nil
     ) -> String {
         var parts: [String] = []
 
@@ -116,12 +117,17 @@ enum PromptBuilder {
             parts.append("[CONVERSATION]\n\(history)")
         }
 
-        // 4) Referenced message (mention)
+        // 4) Web search results (if present)
+        if let searchResults = searchResults, !searchResults.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            parts.append("[SEARCH_RESULTS]\n\(searchResults)")
+        }
+
+        // 5) Referenced message (mention)
         if let mentioned = mentionedContext {
             parts.append("[REFERENCED]\nThe user is referencing this earlier assistant response:\n\(mentioned)")
         }
 
-        // 5) New user message
+        // 6) New user message
         parts.append("USER: \(newMessage)")
 
         return parts.joined(separator: "\n\n")

@@ -51,6 +51,7 @@ final class ChatViewModel {
     private let chatPersistence: ChatPersistence
     private let summarizationService: SummarizationService
     private let summaryViewModel: SummaryViewModel
+    private let searchService: SearchService
 
     private let recentMessageCount = 16
     private let summarizationThreshold = 40
@@ -63,12 +64,14 @@ final class ChatViewModel {
         ollamaClient: OllamaClient,
         chatPersistence: ChatPersistence,
         summarizationService: SummarizationService,
-        summaryViewModel: SummaryViewModel
+        summaryViewModel: SummaryViewModel,
+        searchService: SearchService
     ) {
         self.ollamaClient = ollamaClient
         self.chatPersistence = chatPersistence
         self.summarizationService = summarizationService
         self.summaryViewModel = summaryViewModel
+        self.searchService = searchService
 
         self.conversations = chatPersistence.loadAll()
         self.selectedConversationID = conversations.first?.id
@@ -86,11 +89,13 @@ final class ChatViewModel {
             fileURL: previewRoot.appendingPathComponent("summary.txt")
         )
         let previewSummaryVM = SummaryViewModel(service: previewSummarization)
+        let previewSearch = SearchService()
 
         self.ollamaClient = previewClient
         self.chatPersistence = previewPersistence
         self.summarizationService = previewSummarization
         self.summaryViewModel = previewSummaryVM
+        self.searchService = previewSearch
         self.conversations = previewConversations
         self.selectedConversationID = selectedConversationID ?? previewConversations.first?.id
     }
@@ -171,6 +176,20 @@ final class ChatViewModel {
             return
         }
 
+        // Command detection: /search <query>
+        if text.hasPrefix("/search ") {
+            let query = String(text.dropFirst("/search ".count))
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+
+            guard !query.isEmpty else {
+                error = "Search query cannot be empty. Usage: /search your question"
+                return
+            }
+
+            handleSearchCommand(query: query, conversationID: convID)
+            return  // Exit early - don't do normal send
+        }
+
         let mentionContext: String? = mentionedMessage.map { String($0.content.prefix(500)) }
 
         log.info("Send started — conv: \(convID)")
@@ -218,7 +237,7 @@ final class ChatViewModel {
                 var buffer = ""
                 var tokenCount = 0
                 var lastFlush = Date()
-                let model = UserDefaults.standard.string(forKey: "selectedModel") ?? "llama3"
+                let model = UserDefaults.standard.string(forKey: "selectedModel") ?? "gpt-oss:20b-cloud"
                 log.info("Streaming with model: \(model)")
 
                 let flushCharThreshold = self.flushCharThreshold
@@ -276,6 +295,126 @@ final class ChatViewModel {
                 if placeholderIndex < conversations[i].messages.count,
                    conversations[i].messages[placeholderIndex].content.isEmpty {
                     conversations[i].messages.remove(at: placeholderIndex)
+                }
+            }
+        }
+    }
+
+    // MARK: - Search Command
+
+    private func formatSearchSources(_ response: SearchResponse) -> String {
+        let count = response.results.count
+        let domains = response.sourceDomains
+
+        guard !domains.isEmpty else {
+            return "🔍SEARCH_SOURCES_EMPTY"
+        }
+
+        // Format: 🔍SEARCH_SOURCES:domain1|url1,domain2|url2,...
+        let sourceData = domains.map { domain, url in
+            "\(domain)|\(url)"
+        }.joined(separator: ",")
+
+        return "🔍SEARCH_SOURCES:\(sourceData)"
+    }
+
+    private func handleSearchCommand(query: String, conversationID: UUID) {
+        guard let idx = index(for: conversationID) else { return }
+
+        log.info("Search command: \(query)")
+        input = ""
+        error = nil
+        isLoading = true
+
+        currentTask = Task {
+            defer {
+                isLoading = false
+                currentTask = nil
+            }
+
+            do {
+                // 1. Append user message with /search indicator
+                conversations[idx].messages.append(
+                    ChatMessage(role: "user", content: "/search \(query)")
+                )
+
+                // 2. Show searching status
+                let searchingIndex = conversations[idx].messages.count
+                conversations[idx].messages.append(
+                    ChatMessage(role: "system", content: "🔍 Searching DuckDuckGo...")
+                )
+
+                // 3. Execute search
+                let searchResponse = try await searchService.search(query: query)
+
+                // 4. Replace searching status with actual sources
+                let sourcesMessage = formatSearchSources(searchResponse)
+                guard let i = index(for: conversationID) else { return }
+                conversations[i].messages[searchingIndex] = ChatMessage(
+                    id: conversations[i].messages[searchingIndex].id,
+                    role: "system",
+                    content: sourcesMessage
+                )
+
+                // 5. Build prompt WITH search results
+                let summary = summarizationService.loadSummary()
+                let recent = Array(conversations[i].messages.suffix(recentMessageCount))
+                let sessionPrompt = conversations[i].systemPrompt ?? ""
+
+                let prompt = PromptBuilder.build(
+                    sessionSystemPrompt: sessionPrompt,
+                    summary: summary,
+                    recentMessages: recent,
+                    newMessage: "Based on the search results above, please answer: \(query)",
+                    searchResults: searchResponse.formattedResults
+                )
+
+                // 6. Stream LLM response (same as normal send)
+                let placeholderIndex = conversations[i].messages.count
+                conversations[i].messages.append(ChatMessage(role: "assistant", content: ""))
+
+                let model = UserDefaults.standard.string(forKey: "selectedModel") ?? "gpt-oss:20b-cloud"
+                log.info("Streaming with model: \(model), search-augmented")
+
+                var accumulated = ""
+                var buffer = ""
+
+                try await ollamaClient.streamGenerate(prompt: prompt, model: model) { [weak self] token in
+                    guard let self else { return }
+                    accumulated += token
+                    buffer += token
+
+                    if buffer.count >= self.flushCharThreshold {
+                        guard let i = self.index(for: conversationID) else { return }
+                        self.conversations[i].messages[placeholderIndex] = ChatMessage(
+                            id: self.conversations[i].messages[placeholderIndex].id,
+                            role: "assistant",
+                            content: accumulated
+                        )
+                        buffer = ""
+                    }
+                }
+
+                // Final flush
+                if let i = index(for: conversationID) {
+                    conversations[i].messages[placeholderIndex] = ChatMessage(
+                        id: conversations[i].messages[placeholderIndex].id,
+                        role: "assistant",
+                        content: accumulated
+                    )
+                    chatPersistence.save(conversations[i])
+                }
+
+                log.info("Search-augmented response complete")
+
+            } catch {
+                log.error("Search command failed: \(error.localizedDescription)")
+                self.error = "Search failed: \(error.localizedDescription)"
+
+                if let i = index(for: conversationID),
+                   let lastMsg = conversations[i].messages.last,
+                   lastMsg.role == "assistant" && lastMsg.content.isEmpty {
+                    conversations[i].messages.removeLast()
                 }
             }
         }

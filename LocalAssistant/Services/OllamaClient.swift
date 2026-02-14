@@ -33,7 +33,7 @@ struct OllamaClient {
     }
 
     /// Non-streaming generate (used by summarization).
-    func generate(prompt: String, model: String = "llama3") async throws -> String {
+    func generate(prompt: String, model: String = "gpt-oss:20b-cloud") async throws -> String {
         let url = URL(string: "\(baseURL)/api/generate")!
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
@@ -53,7 +53,7 @@ struct OllamaClient {
     }
 
     /// Streaming generate – calls `onToken` for each chunk on MainActor.
-    func streamGenerate(prompt: String, model: String = "llama3", images: [String]? = nil, onToken: @escaping @MainActor (String) -> Void) async throws {
+    func streamGenerate(prompt: String, model: String = "gpt-oss:20b-cloud", images: [String]? = nil, onToken: @escaping @MainActor (String) -> Void) async throws {
         let url = URL(string: "\(baseURL)/api/generate")!
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
