@@ -1,97 +1,126 @@
 ---
 name: effort-router
-description: Automatically determine the correct reasoning depth and output verbosity before executing any code change. Classifies tasks by scope, risk, and uncertainty to select LOW, MEDIUM, or MAX effort, then enforces matching output rules. Use before any code modification to right-size planning, explanation, and validation.
+description: Token-smart effort router for Claude Code. Chooses the minimum effective effort level for each code-change task, enforces token-saving behaviors (compact output, diffs over full files, minimal exploration), and runs before any code edits. Classifies on scope, risk, uncertainty, and token sensitivity to select LOW, MEDIUM, or MAX effort.
 ---
 
-# Purpose
+# Mission
 
-Decide the right amount of thinking and output before writing code. Prevent over-engineering simple tasks and under-planning complex ones by classifying every request into an effort level and enforcing matching output rules.
+Choose the minimum effective effort level for each task and enforce token-saving behaviors:
+- Keep context small
+- Keep output compact
+- Prefer diffs over full files
+- Avoid unnecessary exploration
 
-# How It Works
+This skill MUST run before any code edits.
 
-1. Receive a code-change request.
-2. Classify the task on three axes: Scope, Risk, Uncertainty.
-3. Map the classification to an effort level (LOW, MEDIUM, MAX).
-4. State the chosen effort level in one line.
-5. Execute the task following the rules for that level.
+# Inputs
 
-# Decision Model
+Extract from the user message:
+- **Goal** (1 sentence)
+- **Constraints** (explicit)
+- **Files/paths mentioned** (if any)
+- **"Must not change" items** (if any)
+- **Rigor**: demo | production (if implied)
 
-Classify the task on these three axes before doing anything else:
+If missing critical info, ask at most 2 short questions. Otherwise proceed.
 
-## Scope
-- **single-file** - Change is contained in one file.
-- **multi-file** - Change touches 2+ files but structure stays the same.
-- **refactor** - Change alters architecture, APIs, or data flow.
+# Step 1 — Task Classification
 
-## Risk
-- **low** - Mistake is easy to spot and revert; no user-facing impact.
-- **medium** - Could break related functionality; limited blast radius.
-- **high** - Affects critical paths, data integrity, or security.
+## A) Scope
+- **S1**: Single-file, localized change
+- **S2**: Multi-file, limited surface area (2-5 files)
+- **S3**: Refactor/feature, cross-cutting
 
-## Uncertainty
-- **clear** - Requirements are explicit; no interpretation needed.
-- **discovery** - Some investigation required to determine approach.
-- **ambiguous** - Requirements are vague, conflicting, or incomplete.
+## B) Risk
+- **R1** (low): copy, styling, layout, UI-only, non-critical flows
+- **R2** (medium): app logic, data transforms, state management, routing, caching
+- **R3** (high): auth, payments, data integrity, security, build tooling, deps, migrations
 
-# Effort Levels
+## C) Uncertainty
+- **U1**: clear instructions + exact location
+- **U2**: some discovery needed (unknown file/entry point)
+- **U3**: ambiguous requirements / needs product decisions
 
-## LOW
+## D) Token Sensitivity (always assume user wants savings)
+- **T1**: user provided exact file/snippet
+- **T2**: user described behavior but not location
+- **T3**: user asked broad/architectural changes
 
-### When to use
-- Scope: single-file
-- Risk: low
-- Uncertainty: clear
+# Step 2 — Effort Decision (minimum effective)
 
-### Rules
-- No long explanations.
-- Provide minimal diff only.
-- No tests unless explicitly requested.
-- Keep output concise; skip preamble.
+## LOW (default)
+
+Use when:
+- (S1) AND (R1 or R2) AND (U1 or U2)
+
+Token rules:
+- No long explanations
+- Output in unified diff only
+- Do not print full files
+- No alternatives; pick 1 approach
+- No tests unless explicitly requested or change is risky
+- Max 8 bullets total across the entire response
 
 ## MEDIUM
 
-### When to use
-- Scope: multi-file
-- Risk: medium
-- Uncertainty: discovery (some investigation needed)
+Use when:
+- (S2) OR (R2) OR (U2), and change touches logic
 
-### Rules
-- Short plan before coding (max 6 bullets).
-- Clean diff with brief rationale per file.
-- Basic validation checks (linting, type-check, smoke test).
-- Surface any assumptions made during discovery.
+Token rules:
+- 1 short plan (max 5 bullets)
+- Search/codebase exploration only if needed; stop early
+- Output diffs only
+- Add minimal verification steps (1-3)
+- No extended rationale
 
-## MAX
+## MAX (rare)
 
-### When to use
-- Scope: refactor or new feature
-- Risk: high (critical path, security, data integrity)
-- Uncertainty: ambiguous requirements
+Use when:
+- (R3) OR (S3) OR (U3)
 
-### Rules
-- Full plan with numbered steps.
-- Identify edge cases and document them.
-- Write or update tests if relevant to the change.
-- Include migration notes when altering APIs or data schemas.
-- Provide a risk summary listing what could go wrong and mitigations.
+Token rules:
+- Still keep output compact
+- Plan (max 8 bullets), then diffs
+- Add tests only if they prevent regressions
+- Explicitly list risks + rollback/migration notes (brief)
 
-# Classification Rules
+# Step 3 — Context Minimization Policy (hard rules)
 
-A task qualifies for a given effort level when **any** of that level's trigger conditions are met on **any** axis. When axes point to different levels, use the **highest** indicated level.
+Before editing:
 
-Examples:
-- Single-file + low risk + clear = **LOW**
-- Multi-file + low risk + clear = **MEDIUM** (scope elevates)
-- Single-file + high risk + clear = **MAX** (risk elevates)
-- Multi-file + medium risk + ambiguous = **MAX** (uncertainty elevates)
+1. Identify **Minimum Relevant Set (MRS)**:
+   - Only open files that are on the execution path for the change
+   - Prefer grep/search by symbol names over reading whole directories
+2. Never paste entire files into the chat output unless user asks
+3. Prefer patch/diff format
+4. Avoid re-stating code that didn't change
 
-# Enforcement
+Stop exploring once enough info exists to implement.
 
-1. The skill MUST classify and decide effort level **before** writing any code.
-2. The skill MUST state the chosen effort level in exactly one line at the top of its response, formatted as:
+# Step 4 — Execution Rules
 
-   **Effort: LOW | MEDIUM | MAX**
+- Preserve existing conventions (linting, formatting, naming, patterns)
+- Make the smallest correct change
+- Do not refactor unrelated code
+- If multiple files must change, do them in the fewest edits possible
+- After edits: give a verification checklist (max 3 steps in LOW/MEDIUM)
 
-3. All subsequent output MUST conform to the rules of the chosen level.
-4. If the effort level changes during execution (e.g., discovery reveals higher risk), re-classify and state the new level before continuing.
+# Output Template (must follow)
+
+```
+1) Effort: LOW | MEDIUM | MAX
+2) Assumptions (only if needed, max 2 bullets)
+3) Patch (unified diff)
+4) Verify (max 3 bullets)
+```
+
+# Examples
+
+- "Change button label" → **LOW**
+- "Fix state bug across 3 components" → **MEDIUM**
+- "Touch auth or persistence layer" → **MAX**
+
+# Final Constraint
+
+This skill prioritizes token efficiency over verbosity.
+If unsure between two levels, choose the **LOWER** level first and escalate only if blocked.
