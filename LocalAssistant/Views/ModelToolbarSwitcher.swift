@@ -22,10 +22,11 @@ struct ModelToolbarSwitcherView: View {
         } label: {
             toolbarLabel
         }
-        .controlSize(.small) // Matches native toolbar control sizing.
+        .buttonStyle(.plain)
         .help("Select model")
         .accessibilityLabel("Model")
         .task {
+            guard !RuntimeEnvironment.isXcodePreview else { return }
             await viewModel.loadIfNeeded()
         }
     }
@@ -34,20 +35,49 @@ struct ModelToolbarSwitcherView: View {
         HStack(spacing: 6) {
             if let iconSystemName {
                 Image(systemName: iconSystemName)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Color.white)
             }
 
             if viewModel.isLoading && viewModel.models.isEmpty {
                 ProgressView()
                     .controlSize(.small)
+                    .tint(Color.white)
             }
 
             Text(viewModel.selectedModelName)
+                .font(.headline.weight(.semibold))
+                .foregroundStyle(Color.white)
                 .lineLimit(1)
                 .truncationMode(.tail)
+
+            Spacer(minLength: 8)
+
+            Image(systemName: "chevron.down")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(Color.white)
         }
         // Fixed width keeps toolbar layout stable as model names change.
         .frame(width: viewModel.fixedControlWidth, alignment: .leading)
+        .padding(.horizontal, 20)
+        .padding(.vertical, 8)
+        .background(
+            Capsule(style: .continuous)
+                .fill(Color.white.opacity(0.12))
+        )
+        .overlay(
+            Capsule(style: .continuous)
+                .strokeBorder(Color.white.opacity(0.10), lineWidth: 1)
+        )
+        .padding(4)
+        .background(
+            Capsule(style: .continuous)
+                .fill(Color.black.opacity(0.72))
+        )
+        .overlay(
+            Capsule(style: .continuous)
+                .strokeBorder(Color.white.opacity(0.08), lineWidth: 1)
+        )
+        .contentShape(Capsule(style: .continuous))
     }
 
     @ViewBuilder

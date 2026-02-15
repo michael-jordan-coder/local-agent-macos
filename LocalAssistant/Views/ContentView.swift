@@ -23,6 +23,10 @@ struct ContentView: View {
         .frame(minWidth: 700, minHeight: 500)
         .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
         .toolbar {
+            ToolbarItem(placement: .principal) {
+                ModelToolbarSwitcherView()
+            }
+
             ToolbarItem(placement: .primaryAction) {
                 Button {
                     showInspector.toggle()

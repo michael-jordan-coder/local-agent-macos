@@ -10,6 +10,7 @@ struct SidebarView: View {
 
     @State private var isCTAHovered = false
     @State private var isSettingsHovered = false
+    @Namespace private var tabHighlightNamespace
 
     var body: some View {
         VStack(spacing: 0) {
@@ -75,16 +76,58 @@ struct SidebarView: View {
     @ToolbarContentBuilder
     private var sidebarToolbar: some ToolbarContent {
         ToolbarItem(placement: .navigation) {
-            Picker("Section", selection: $viewModel.sidebarTab) {
-                Text("Chats").tag(SidebarTab.chats)
-                Text("Prompts").tag(SidebarTab.prompts)
-            }
-            .pickerStyle(.segmented)
-            .labelsHidden()
-            .controlSize(.regular)
-            .font(.callout)
-            .help("Switch sidebar section")
+            sidebarTabSwitcher
         }
+    }
+
+    private var sidebarTabSwitcher: some View {
+        HStack(spacing: 4) {
+            sidebarTabButton(title: "Chat", tab: .chats)
+            sidebarTabButton(title: "Prompts", tab: .prompts)
+        }
+        .padding(4)
+        .background(
+            Capsule(style: .continuous)
+                .fill(Color.black.opacity(0.72))
+        )
+        .overlay(
+            Capsule(style: .continuous)
+                .strokeBorder(Color.white.opacity(0.08), lineWidth: 1)
+        )
+        .help("Switch sidebar section")
+        .accessibilityLabel("Section")
+    }
+
+    private func sidebarTabButton(title: String, tab: SidebarTab) -> some View {
+        let isSelected = viewModel.sidebarTab == tab
+
+        return Button {
+            withAnimation(.easeInOut(duration: 0.16)) {
+                viewModel.sidebarTab = tab
+            }
+        } label: {
+            Text(title)
+                .font(.headline.weight(isSelected ? .semibold : .medium))
+                .foregroundStyle(isSelected ? Color.white : Color.white.opacity(0.68))
+                .lineLimit(1)
+                .padding(.horizontal, 20)
+                .padding(.vertical, 8)
+                .frame(minWidth: 92)
+                .background {
+                    if isSelected {
+                        Capsule(style: .continuous)
+                            .fill(Color.white.opacity(0.12))
+                            .overlay(
+                                Capsule(style: .continuous)
+                                    .strokeBorder(Color.white.opacity(0.10), lineWidth: 1)
+                            )
+                            .matchedGeometryEffect(id: "SidebarTabHighlight", in: tabHighlightNamespace)
+                    }
+                }
+        }
+        .buttonStyle(.plain)
+        .contentShape(Capsule(style: .continuous))
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 
     // MARK: - Chats Sidebar

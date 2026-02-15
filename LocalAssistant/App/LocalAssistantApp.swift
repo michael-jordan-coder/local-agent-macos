@@ -9,7 +9,9 @@ struct LocalAssistantApp: App {
     @State private var savedPromptsVM: SavedPromptsViewModel
 
     init() {
-        try? SMAppService.mainApp.register()
+        if !RuntimeEnvironment.isXcodePreview {
+            try? SMAppService.mainApp.register()
+        }
 
         let client = OllamaClient()
         let chatPersistence = ChatPersistence()
@@ -38,9 +40,13 @@ struct LocalAssistantApp: App {
                 savedPromptsVM: savedPromptsVM
             )
             .preferredColorScheme(.dark)
-            .task { await statusVM.ensureRunning() }
+            .task {
+                guard !RuntimeEnvironment.isXcodePreview else { return }
+                await statusVM.ensureRunning()
+            }
             .onAppear { styleWindow() }
         }
+        .windowToolbarStyle(.unified(showsTitle: false))
         .commands {
             CommandGroup(after: .newItem) {
                 Button("New Conversation") {
@@ -59,6 +65,7 @@ struct LocalAssistantApp: App {
     private func styleWindow() {
         DispatchQueue.main.async {
             guard let window = NSApplication.shared.windows.first else { return }
+            window.title = ""
             window.titleVisibility = .hidden
             window.titlebarAppearsTransparent = true
             window.backgroundColor = NSColor(Color.appWindowBg)
