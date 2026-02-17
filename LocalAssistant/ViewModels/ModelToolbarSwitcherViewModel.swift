@@ -172,18 +172,27 @@ struct InMemoryModelSelectionStore: ModelSelectionStoring {
     }
 }
 
-struct PreviewModelCatalog: ModelCatalogProviding {
+/// A catalog that returns static data instantly — no network, no delay.
+struct StaticModelCatalog: ModelCatalogProviding {
     let models: [OllamaModel]
-    let delayNanoseconds: UInt64
+    func fetchModels() async throws -> [OllamaModel] { models }
+}
 
-    init(models: [OllamaModel], delayNanoseconds: UInt64 = 250_000_000) {
-        self.models = models
-        self.delayNanoseconds = delayNanoseconds
-    }
-
-    func fetchModels() async throws -> [OllamaModel] {
-        try await Task.sleep(nanoseconds: delayNanoseconds)
-        return models
+extension ModelToolbarSwitcherViewModel {
+    /// Creates a VM with pre-loaded state for Xcode previews.
+    /// No network, no disk I/O, no delays — pure in-memory.
+    static func preview(
+        models: [OllamaModel],
+        selected: String
+    ) -> ModelToolbarSwitcherViewModel {
+        let vm = ModelToolbarSwitcherViewModel(
+            catalog: StaticModelCatalog(models: models),
+            selectionStore: InMemoryModelSelectionStore(initialValue: selected)
+        )
+        vm.models = models
+        vm.loadState = .loaded
+        vm.selectedModelName = selected
+        return vm
     }
 }
 #endif

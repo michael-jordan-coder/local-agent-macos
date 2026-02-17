@@ -190,20 +190,15 @@ struct ModelToolbarSwitcherView: View {
 // MARK: - Preview
 
 #Preview("Model Toolbar Switcher") {
-    let previewViewModel = ModelToolbarSwitcherViewModel(
-        catalog: PreviewModelCatalog(
-            models: [
-                OllamaModel(name: "llama3.2"),
-                OllamaModel(name: "deepseek-coder:6.7b"),
-                OllamaModel(name: "qwen2.5-coder:14b"),
-                OllamaModel(name: "mistral:latest"),
-                OllamaModel(name: "gpt-oss:20b-cloud")
-            ]
-        ),
-        selectionStore: InMemoryModelSelectionStore(initialValue: "qwen2.5-coder:14b"),
-        persistenceKey: "preview.selectedModel",
-        defaultModelName: "llama3.2",
-        fixedControlWidth: 220
+    let vm = ModelToolbarSwitcherViewModel.preview(
+        models: [
+            OllamaModel(name: "llama3.2"),
+            OllamaModel(name: "deepseek-coder:6.7b"),
+            OllamaModel(name: "qwen2.5-coder:14b"),
+            OllamaModel(name: "mistral:latest"),
+            OllamaModel(name: "gpt-oss:20b-cloud")
+        ],
+        selected: "deepseek-coder:6.7b"
     )
 
     NavigationStack {
@@ -211,10 +206,7 @@ struct ModelToolbarSwitcherView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .toolbar {
                 ToolbarItem(placement: .principal) {
-                    ModelToolbarSwitcherView(
-                        iconSystemName: "cpu",
-                        viewModel: previewViewModel
-                    )
+                    ModelToolbarSwitcherView(viewModel: vm)
                 }
             }
     }

@@ -23,25 +23,30 @@ struct SavedPromptsListView: View {
     var body: some View {
         List(selection: $promptsVM.selectedPromptID) {
             if !pinnedFiltered.isEmpty {
-                Section("Pinned") {
+                Section {
                     ForEach(pinnedFiltered) { prompt in
                         promptRow(prompt)
                     }
+                } header: {
+                    Text("Pinned")
                 }
             }
 
             if !unpinnedFiltered.isEmpty {
-                Section("Prompts") {
+                Section {
                     ForEach(unpinnedFiltered) { prompt in
                         promptRow(prompt)
                     }
+                } header: {
+                    Text("Prompts")
                 }
             }
         }
+        .listStyle(.sidebar)
         .searchable(
             text: $searchText,
             placement: .sidebar,
-            prompt: "Search prompts"
+            prompt: "Search"
         )
         .overlay {
             if filtered.isEmpty && !searchText.isEmpty {
@@ -57,16 +62,9 @@ struct SavedPromptsListView: View {
     }
 
     private func promptRow(_ prompt: SavedPrompt) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(prompt.title)
-                .lineLimit(1)
-
-            Text(prompt.content.prefix(60))
-                .font(.caption)
-                .foregroundStyle(.tertiary)
-                .lineLimit(1)
-        }
-        .tag(prompt.id)
+        Label(prompt.title, systemImage: prompt.isPinned ? "pin.fill" : "doc.text")
+            .lineLimit(1)
+            .tag(prompt.id)
         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
             Button(role: .destructive) {
                 promptsVM.deletePrompt(id: prompt.id)
