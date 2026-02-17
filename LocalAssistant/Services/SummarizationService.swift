@@ -46,6 +46,9 @@ struct SummarizationService {
 
         \(truncated)
         """
-        return try await ollamaClient.generate(prompt: prompt)
+        return try await ollamaClient.generate(
+            prompt: prompt,
+            source: "SummarizationService.generateSummary"
+        )
     }
 }

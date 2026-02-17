@@ -29,7 +29,7 @@ final class AppStatusViewModel {
     func ensureRunning() async {
         status = .checking
 
-        if await client.isReachable() {
+        if await client.isReachable(source: "AppStatus.ensureRunning.initial") {
             status = .ready
             return
         }
@@ -40,7 +40,7 @@ final class AppStatusViewModel {
         let deadline = Date().addingTimeInterval(12)
         while Date() < deadline {
             try? await Task.sleep(for: .milliseconds(400))
-            if await client.isReachable() {
+            if await client.isReachable(source: "AppStatus.ensureRunning.poll") {
                 status = .ready
                 return
             }

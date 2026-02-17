@@ -80,7 +80,7 @@ private enum ModelNameFormatter {
 // MARK: - Toolbar Control
 
 struct ModelToolbarSwitcherView: View {
-    @State private var viewModel: ModelToolbarSwitcherViewModel
+    @Bindable var viewModel: ModelToolbarSwitcherViewModel
     @State private var isHovered = false
 
     private let iconSystemName: String?
@@ -88,10 +88,10 @@ struct ModelToolbarSwitcherView: View {
     @MainActor
     init(
         iconSystemName: String? = nil,
-        viewModel: ModelToolbarSwitcherViewModel? = nil
+        viewModel: ModelToolbarSwitcherViewModel
     ) {
         self.iconSystemName = iconSystemName
-        _viewModel = State(initialValue: viewModel ?? ModelToolbarSwitcherViewModel())
+        self.viewModel = viewModel
     }
 
     var body: some View {

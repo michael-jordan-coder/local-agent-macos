@@ -21,8 +21,9 @@ struct SettingsView: View {
                 .disabled(availableModels.isEmpty)
             }
             .task {
+                guard availableModels.isEmpty else { return }
                 do {
-                    availableModels = try await OllamaClient().fetchModels()
+                    availableModels = try await OllamaClient().fetchModels(source: "SettingsView.loadModels")
                 } catch {
                     print("Failed to fetch models: \(error)")
                 }

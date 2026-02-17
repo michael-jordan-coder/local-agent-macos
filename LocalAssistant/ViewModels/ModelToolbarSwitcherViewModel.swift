@@ -1,11 +1,11 @@
 import Foundation
 import Observation
+import os
 
 // MARK: - Dependencies
 
-@MainActor
 protocol ModelCatalogProviding {
-    func fetchModels() async throws -> [OllamaModel]
+    func fetchModels(source: String) async throws -> [OllamaModel]
 }
 
 extension OllamaClient: ModelCatalogProviding {}
@@ -34,6 +34,8 @@ struct UserDefaultsModelSelectionStore: ModelSelectionStoring {
 
 // MARK: - View Model
 
+private let log = Logger(subsystem: "daniels.LocalAssistant", category: "ModelToolbarSwitcherVM")
+
 @MainActor
 @Observable
 final class ModelToolbarSwitcherViewModel {
@@ -50,6 +52,7 @@ final class ModelToolbarSwitcherViewModel {
     private(set) var loadState: LoadState = .idle
     private(set) var selectedModelName: String
 
+    private let instanceID = UUID().uuidString
     private let catalog: ModelCatalogProviding
     private let selectionStore: ModelSelectionStoring
     private let persistenceKey: String
@@ -69,6 +72,7 @@ final class ModelToolbarSwitcherViewModel {
         self.fixedControlWidth = fixedControlWidth
 
         self.selectedModelName = selectionStore.loadSelection(forKey: persistenceKey) ?? defaultModelName
+        log.info("Init instance=\(self.instanceID, privacy: .public) selected=\(self.selectedModelName, privacy: .public)")
     }
 
     convenience init(
@@ -100,30 +104,42 @@ final class ModelToolbarSwitcherViewModel {
     }
 
     func loadIfNeeded() async {
+        log.info("loadIfNeeded instance=\(self.instanceID, privacy: .public) state=\(String(describing: self.loadState), privacy: .public)")
         guard case .idle = loadState else { return }
         await reload()
     }
 
     func reload() async {
+        let startedAt = Date()
+        log.info("reload begin instance=\(self.instanceID, privacy: .public)")
         loadState = .loading
 
         do {
-            let fetched = try await catalog.fetchModels()
+            let fetched = try await catalog.fetchModels(source: "ModelToolbarSwitcher.reload")
             models = fetched
                 .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
 
             reconcileSelection()
             loadState = .loaded
+            let elapsedMs = Int(Date().timeIntervalSince(startedAt) * 1000)
+            log.info("reload end instance=\(self.instanceID, privacy: .public) modelCount=\(self.models.count) elapsedMs=\(elapsedMs)")
         } catch {
             // Keep selection usable even if loading fails.
             loadState = .failed(message: "Unable to load models")
+            let elapsedMs = Int(Date().timeIntervalSince(startedAt) * 1000)
+            log.error("reload failed instance=\(self.instanceID, privacy: .public) elapsedMs=\(elapsedMs) error=\(error.localizedDescription, privacy: .public)")
         }
     }
 
     func selectModel(named name: String) {
         guard selectedModelName != name else { return }
+        let previous = selectedModelName
+        let startedAt = Date()
+        log.info("switch begin instance=\(self.instanceID, privacy: .public) from=\(previous, privacy: .public) to=\(name, privacy: .public)")
         selectedModelName = name
         selectionStore.saveSelection(name, forKey: persistenceKey)
+        let elapsedMs = Int(Date().timeIntervalSince(startedAt) * 1000)
+        log.info("switch end instance=\(self.instanceID, privacy: .public) selected=\(self.selectedModelName, privacy: .public) elapsedMs=\(elapsedMs)")
     }
 
     private func reconcileSelection() {
@@ -175,7 +191,10 @@ struct InMemoryModelSelectionStore: ModelSelectionStoring {
 /// A catalog that returns static data instantly — no network, no delay.
 struct StaticModelCatalog: ModelCatalogProviding {
     let models: [OllamaModel]
-    func fetchModels() async throws -> [OllamaModel] { models }
+    func fetchModels(source: String) async throws -> [OllamaModel] {
+        _ = source
+        return models
+    }
 }
 
 extension ModelToolbarSwitcherViewModel {

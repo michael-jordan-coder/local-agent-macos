@@ -243,7 +243,12 @@ final class ChatViewModel {
                 let flushCharThreshold = self.flushCharThreshold
                 let flushTimeInterval = self.flushTimeInterval
 
-                try await ollamaClient.streamGenerate(prompt: prompt, model: model, images: base64Images) { [weak self] token in
+                try await ollamaClient.streamGenerate(
+                    prompt: prompt,
+                    model: model,
+                    images: base64Images,
+                    source: "ChatViewModel.send"
+                ) { [weak self] token in
                     guard let self else { return }
                     accumulated += token
                     buffer += token
@@ -379,7 +384,11 @@ final class ChatViewModel {
                 var accumulated = ""
                 var buffer = ""
 
-                try await ollamaClient.streamGenerate(prompt: prompt, model: model) { [weak self] token in
+                try await ollamaClient.streamGenerate(
+                    prompt: prompt,
+                    model: model,
+                    source: "ChatViewModel.search"
+                ) { [weak self] token in
                     guard let self else { return }
                     accumulated += token
                     buffer += token

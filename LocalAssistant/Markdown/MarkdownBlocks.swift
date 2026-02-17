@@ -57,31 +57,9 @@ private struct MarkdownBlockView: View {
             .padding(.bottom, theme.list.spacingAfter)
 
         case .codeBlock(let language, let code):
-            VStack(alignment: .leading, spacing: 6) {
-                if let language, !language.isEmpty {
-                    Text(language)
-                        .font(.caption.weight(.medium))
-                        .foregroundStyle(theme.palette.textSecondary)
-                        .textCase(.lowercase)
-                }
-
-                ScrollView(.horizontal, showsIndicators: true) {
-                    // Syntax-highlighted code
-                    Text(AttributedString(SyntaxHighlighter.highlight(code, language: language)))
-                        .lineSpacing(theme.codeBlock.lineSpacing)
-                        .textSelection(.enabled)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
-                .padding(theme.codeBlockPadding)
-                .background(Color(nsColor: SyntaxHighlighter.codeBlockBackgroundColor))
-                .clipShape(RoundedRectangle(cornerRadius: theme.codeBlockCornerRadius))
-                .overlay(
-                    RoundedRectangle(cornerRadius: theme.codeBlockCornerRadius)
-                        .stroke(Color(nsColor: SyntaxHighlighter.codeBlockBorderColor), lineWidth: 1)
-                )
-            }
-            .padding(.top, theme.codeBlock.spacingBefore)
-            .padding(.bottom, theme.codeBlock.spacingAfter)
+            MarkdownCodeBlockView(language: language, code: code, theme: theme)
+                .padding(.top, theme.codeBlock.spacingBefore)
+                .padding(.bottom, theme.codeBlock.spacingAfter)
 
         case .blockquote(let blocks):
             HStack(alignment: .top, spacing: 12) {
@@ -131,6 +109,68 @@ private struct MarkdownBlockView: View {
         case 2: return theme.h2
         default: return theme.h3
         }
+    }
+}
+
+private struct MarkdownCodeBlockView: View {
+    let language: String?
+    let code: String
+    let theme: MarkdownTheme
+
+    @State private var copied = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                if let language, !language.isEmpty {
+                    Text(language)
+                        .font(.caption.weight(.medium))
+                        .foregroundStyle(theme.palette.textSecondary)
+                        .textCase(.lowercase)
+                }
+
+                Spacer(minLength: 0)
+
+                Button {
+                    NSPasteboard.general.clearContents()
+                    NSPasteboard.general.setString(code, forType: .string)
+
+                    withAnimation(.easeInOut(duration: 0.15)) {
+                        copied = true
+                    }
+
+                    Task {
+                        try? await Task.sleep(for: .seconds(1.5))
+                        withAnimation(.easeInOut(duration: 0.15)) {
+                            copied = false
+                        }
+                    }
+                } label: {
+                    Image(systemName: copied ? "checkmark" : "doc.on.doc")
+                        .font(.caption.weight(.medium))
+                        .foregroundStyle(copied ? Color.green : theme.palette.textSecondary)
+                        .frame(width: 22, height: 22)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .help(copied ? "Copied" : "Copy code")
+            }
+
+            ScrollView(.horizontal, showsIndicators: true) {
+                // Syntax-highlighted code
+                Text(AttributedString(SyntaxHighlighter.highlight(code, language: language)))
+                    .lineSpacing(theme.codeBlock.lineSpacing)
+                    .textSelection(.enabled)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+        .padding(theme.codeBlockPadding)
+        .background(Color(nsColor: SyntaxHighlighter.codeBlockBackgroundColor))
+        .clipShape(RoundedRectangle(cornerRadius: theme.codeBlockCornerRadius))
+        .overlay(
+            RoundedRectangle(cornerRadius: theme.codeBlockCornerRadius)
+                .stroke(Color(nsColor: SyntaxHighlighter.codeBlockBorderColor), lineWidth: 1)
+        )
     }
 }
 

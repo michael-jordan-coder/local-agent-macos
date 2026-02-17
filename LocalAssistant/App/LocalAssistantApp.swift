@@ -4,6 +4,7 @@ import ServiceManagement
 @main
 struct LocalAssistantApp: App {
     @State private var statusVM: AppStatusViewModel
+    @State private var modelSwitcherVM: ModelToolbarSwitcherViewModel
     @State private var chatVM: ChatViewModel
     @State private var summaryVM: SummaryViewModel
     @State private var savedPromptsVM: SavedPromptsViewModel
@@ -39,6 +40,7 @@ struct LocalAssistantApp: App {
             ? AppStatusViewModel(previewStatus: .ready)
             : AppStatusViewModel(client: client)
         )
+        _modelSwitcherVM = State(initialValue: ModelToolbarSwitcherViewModel())
         _chatVM = State(initialValue: ChatViewModel(
             ollamaClient: client,
             chatPersistence: chatPersistence,
@@ -62,6 +64,7 @@ struct LocalAssistantApp: App {
         WindowGroup {
             ContentView(
                 statusVM: statusVM,
+                modelSwitcherVM: modelSwitcherVM,
                 chatVM: chatVM,
                 summaryVM: summaryVM,
                 savedPromptsVM: savedPromptsVM

@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ContentView: View {
     var statusVM: AppStatusViewModel
+    var modelSwitcherVM: ModelToolbarSwitcherViewModel
     @Bindable var chatVM: ChatViewModel
     var summaryVM: SummaryViewModel
     @Bindable var savedPromptsVM: SavedPromptsViewModel
@@ -25,7 +26,7 @@ struct ContentView: View {
         .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
         .toolbar {
             ToolbarItem(placement: .principal) {
-                ModelToolbarSwitcherView()
+                ModelToolbarSwitcherView(viewModel: modelSwitcherVM)
             }
 
             ToolbarItem(placement: .primaryAction) {
@@ -129,9 +130,20 @@ struct ContentView: View {
         persistence: SavedPromptPersistence(directory: previewRoot.appendingPathComponent("saved-prompts", isDirectory: true))
     )
     let statusVM = AppStatusViewModel(previewStatus: .ready)
+    let modelSwitcherVM = ModelToolbarSwitcherViewModel.preview(
+        models: [
+            OllamaModel(name: "llama3.2"),
+            OllamaModel(name: "deepseek-coder:6.7b"),
+            OllamaModel(name: "qwen2.5-coder:14b"),
+            OllamaModel(name: "mistral:latest"),
+            OllamaModel(name: "gpt-oss:20b-cloud")
+        ],
+        selected: "gpt-oss:20b-cloud"
+    )
 
     ContentView(
         statusVM: statusVM,
+        modelSwitcherVM: modelSwitcherVM,
         chatVM: chatVM,
         summaryVM: summaryVM,
         savedPromptsVM: savedPromptsVM
