@@ -19,12 +19,13 @@ struct ContentView: View {
         .inspector(isPresented: $showInspector) {
             SystemPromptPanelView(chatVM: chatVM, savedPromptsVM: savedPromptsVM, isPresented: $showInspector)
                 .inspectorColumnWidth(min: 350, ideal: 380, max: 400)
+          
         }
         .frame(minWidth: 700, minHeight: 500)
         .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
         .toolbar {
             ToolbarItem(placement: .principal) {
-                ModelToolbarSwitcherView()
+                Spacer()
             }
 
             ToolbarItem(placement: .primaryAction) {
@@ -119,7 +120,7 @@ struct ContentView: View {
     let chatVM = ChatViewModel(
         ollamaClient: client,
         chatPersistence: chatPersistence,
-        summarizationService: summarizationService,
+         summarizationService: summarizationService,
         summaryViewModel: summaryVM,
         searchService: searchService
     )

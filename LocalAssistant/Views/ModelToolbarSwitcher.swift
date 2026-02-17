@@ -22,6 +22,8 @@ struct ModelToolbarSwitcherView: View {
         } label: {
             toolbarLabel
         }
+        .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
         .buttonStyle(.plain)
         .help("Select model")
         .accessibilityLabel("Model")
@@ -45,39 +47,16 @@ struct ModelToolbarSwitcherView: View {
             }
 
             Text(viewModel.selectedModelName)
-                .font(.headline.weight(.semibold))
+                .font(.title2.weight(.semibold))
                 .foregroundStyle(Color.white)
                 .lineLimit(1)
                 .truncationMode(.tail)
 
-            Spacer(minLength: 8)
-
             Image(systemName: "chevron.down")
                 .font(.caption.weight(.semibold))
-                .foregroundStyle(Color.white)
+                .foregroundStyle(Color.white.opacity(0.5))
         }
-        // Fixed width keeps toolbar layout stable as model names change.
-        .frame(width: viewModel.fixedControlWidth, alignment: .leading)
-        .padding(.horizontal, 20)
-        .padding(.vertical, 8)
-        .background(
-            Capsule(style: .continuous)
-                .fill(Color.white.opacity(0.12))
-        )
-        .overlay(
-            Capsule(style: .continuous)
-                .strokeBorder(Color.white.opacity(0.10), lineWidth: 1)
-        )
-        .padding(4)
-        .background(
-            Capsule(style: .continuous)
-                .fill(Color.black.opacity(0.72))
-        )
-        .overlay(
-            Capsule(style: .continuous)
-                .strokeBorder(Color.white.opacity(0.08), lineWidth: 1)
-        )
-        .contentShape(Capsule(style: .continuous))
+        .contentShape(Rectangle())
     }
 
     @ViewBuilder
@@ -138,14 +117,14 @@ struct ModelToolbarSwitcherView: View {
     let previewViewModel = ModelToolbarSwitcherViewModel(
         catalog: PreviewModelCatalog(
             models: [
-                OllamaModel(name: "llama3.2"),
-                OllamaModel(name: "qwen2.5-coder:14b"),
-                OllamaModel(name: "deepseek-r1:8b")
+                OllamaModel(name: "Llama3.2"),
+                OllamaModel(name: "Qwen2.5-coder:14b"),
+                OllamaModel(name: "Deepseek-r1:8b")
             ]
         ),
         selectionStore: InMemoryModelSelectionStore(initialValue: "qwen2.5-coder:14b"),
         persistenceKey: "preview.selectedModel",
-        defaultModelName: "llama3.2",
+        defaultModelName: "Llama3.2",
         fixedControlWidth: 220
     )
 
