@@ -25,7 +25,7 @@ struct ContentView: View {
         .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
         .toolbar {
             ToolbarItem(placement: .principal) {
-                Spacer()
+                ModelToolbarSwitcherView()
             }
 
             ToolbarItem(placement: .primaryAction) {
